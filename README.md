@@ -41,8 +41,10 @@ photo is never sent anywhere.
 
 - Conversion runs in a background worker (`js/convert.js`). Small or thin
   areas are merged into their neighbors until every area passes the tap
-  rule, and palettes follow the same color rules as the checker, so you may
-  get fewer colors than you asked for when a photo's shades are very close.
+  rule. Palettes follow the checker's color rules, except that uploads use a
+  relaxed "colors must differ" minimum (ΔE 6 instead of 12) so photos with
+  many close shades keep more of them; only near-identical colors are
+  combined. Similar shades still never get easily confused numbers.
 - Uploaded pictures and their progress are stored in IndexedDB (not
   localStorage). Like all website data, Safari may clear it if the site
   isn't used for a long time; adding the game to the home screen avoids that.

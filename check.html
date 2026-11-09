@@ -82,6 +82,9 @@ function checkArt(G, art) {
   const smallest = taps.reduce((a, b) => (b.px < a.px ? b : a));
 
   // Palette: distinct colors, non-confusable numbers for similar shades, readable numbers.
+  // Uploaded photos may set a relaxed minimum (art.minDeltaE); built-in pictures use the rule.
+  const minDE = art.minDeltaE || RULES.minDeltaE;
+  if (art.minDeltaE) warnings.push(`Uses a relaxed color-difference minimum of ΔE ${art.minDeltaE} (uploaded photo).`);
   let closest = { d: Infinity };
   for (let a = 0; a < pal.length; a++) {
     const fromWhite = dE(pal[a].hex, '#FFFFFF');
@@ -92,7 +95,7 @@ function checkArt(G, art) {
     for (let b = a + 1; b < pal.length; b++) {
       const d = dE(pal[a].hex, pal[b].hex);
       if (d < closest.d) closest = { d, a: pal[a], b: pal[b] };
-      if (d < RULES.minDeltaE) problems.push(`Colors ${pal[a].n} (${pal[a].name}) and ${pal[b].n} (${pal[b].name}) are too alike (ΔE ${d.toFixed(1)}).`);
+      if (d < minDE) problems.push(`Colors ${pal[a].n} (${pal[a].name}) and ${pal[b].n} (${pal[b].name}) are too alike (ΔE ${d.toFixed(1)}).`);
       if (d < RULES.similarDeltaE && confusable(pal[a].n, pal[b].n)) problems.push(`Similar shades ${pal[a].n} (${pal[a].name}) and ${pal[b].n} (${pal[b].name}) have easily confused numbers.`);
     }
   }

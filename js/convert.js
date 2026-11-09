@@ -129,12 +129,12 @@
   }
 
   // Merge too-similar colors and nudge each to pass the readability rules.
-  function finalizePalette(P) {
+  function finalizePalette(P, minDeltaE) {
     for (let guard = 0; guard < 300; guard++) {
       P.forEach((p) => { const f = legalize(p.lab); p.lab = f.lab; p.rgb = f.rgb; });
       let bi = -1, bj = -1, bd = Infinity;
       for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) { const d = dE(P[i].lab, P[j].lab); if (d < bd) { bd = d; bi = i; bj = j; } }
-      if (bd >= RULE.minDeltaE + 0.5) break;
+      if (bd >= minDeltaE + 0.5) break;
       const A = P[bi], B = P[bj], n = A.n + B.n;
       A.lab = [0, 1, 2].map((k) => (A.lab[k] * A.n + B.lab[k] * B.n) / n);
       A.n = n;
@@ -369,7 +369,7 @@
     const step = Math.max(1, Math.floor(N / 16000)), n = Math.floor(N / step);
     const S = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) { const p = i * step * 3; S[i * 3] = lab[p]; S[i * 3 + 1] = lab[p + 1]; S[i * 3 + 2] = lab[p + 2]; }
-    const P = finalizePalette(kmeans(S, n, Math.min(job.colors, n), rand));
+    const P = finalizePalette(kmeans(S, n, Math.min(job.colors, n), rand), job.minDeltaE || RULE.minDeltaE);
 
     // 3. Assign pixels to the nearest palette color, then a majority filter for speckles.
     let lbl = new Int16Array(N);

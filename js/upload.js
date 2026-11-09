@@ -13,6 +13,9 @@
     5: { G: 300, minArea: 16, r: 1.25, name: 'Detailed' },
   };
   const MAX_ZOOM = 10, MAX_REGIONS = 500;
+  // Photos often have many close shades, so uploads use a relaxed "colors must
+  // differ" minimum (CIE ΔE 6 instead of the built-in pictures' 12).
+  const MIN_DELTA_E = 6;
   const RATIOS = [['Free', null], ['Square', 1], ['4:3', 4 / 3], ['3:4', 3 / 4]];
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -265,19 +268,19 @@
         ctx.drawImage(src, crop.x, crop.y, crop.w, crop.h, 0, 0, W, Hh);
         const data = ctx.getImageData(0, 0, W, Hh).data;
         try {
-          const res = await convert({ width: W, height: Hh, data, colors: settings.colors, minArea: d.minArea, rMin, maxRegions: MAX_REGIONS });
+          const res = await convert({ width: W, height: Hh, data, colors: settings.colors, minArea: d.minArea, rMin, maxRegions: MAX_REGIONS, minDeltaE: MIN_DELTA_E });
           if (my !== job || step !== 'settings') return; // a newer request superseded this one
           const n = res.regions.length;
           art = {
             id: 'upload-preview', user: true, title: fields.name, tags: [normTag(fields.tag) || 'photos'],
             difficulty: n < 70 ? 'Easy' : n < 160 ? 'Medium' : 'Hard',
-            viewBox: [0, 0, res.width, res.height], maxZoom: MAX_ZOOM,
+            viewBox: [0, 0, res.width, res.height], maxZoom: MAX_ZOOM, minDeltaE: MIN_DELTA_E,
             palette: res.palette.map((p) => [p.hex, p.name]), regions: res.regions,
           };
           renderPreview();
           const merged = res.stats.requested - res.stats.colors;
           stats.innerHTML = `<b>${n} areas · ${res.stats.colors} colors</b> · ${art.difficulty}` +
-            (merged > 0 ? `<br><span>${merged} color${merged > 1 ? 's were' : ' was'} too similar to another and got combined, so every shade is easy to tell apart.</span>` : '');
+            (merged > 0 ? `<br><span>${merged} color${merged > 1 ? 's were' : ' was'} nearly identical to another and got combined.</span>` : '');
           save.disabled = false;
         } catch (e) {
           if (my === job) stats.textContent = 'Something went wrong: ' + e.message;
