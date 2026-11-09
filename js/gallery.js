@@ -3,13 +3,17 @@
   const S = PBN.svgEl, H = PBN.el;
 
   // Small, label-free render of an artwork: filled regions in color, the rest white.
+  let thumbCount = 0;
   PBN.renderThumb = function (art, filled) {
     const [vx, vy, vw, vh] = art.viewBox;
     const svg = S('svg', { viewBox: `${vx} ${vy} ${vw} ${vh}`, preserveAspectRatio: 'xMidYMid meet', class: 'thumb-art' });
+    const clipId = 'thumbclip-' + (++thumbCount);
+    S('rect', { x: vx, y: vy, width: vw, height: vh }, S('clipPath', { id: clipId }, S('defs', {}, svg)));
+    const g = S('g', { 'clip-path': `url(#${clipId})` }, svg);
     art.regions.forEach((r, i) => {
       const hex = art.palette[r.c - 1][0];
       const on = filled.has(i);
-      S('path', { d: PBN.shapeToPath(r), fill: on ? hex : '#FFFFFF', stroke: on ? hex : '#C3C8D1', 'stroke-width': 1, 'vector-effect': 'non-scaling-stroke' }, svg);
+      S('path', { d: PBN.shapeToPath(r), fill: on ? hex : '#FFFFFF', stroke: on ? hex : '#C3C8D1', 'stroke-width': 1, 'vector-effect': 'non-scaling-stroke' }, g);
     });
     return svg;
   };

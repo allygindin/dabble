@@ -42,9 +42,13 @@
     const svg = S('svg', { viewBox: `${vx} ${vy} ${vw} ${vh}`, preserveAspectRatio: 'xMidYMid meet', class: 'art' }, stage);
     const defs = S('defs', {}, svg);
     const vp = S('g', {}, svg);
-    const gRegions = S('g', { class: 'regions' }, vp);
-    const gLabels = S('g', { class: 'labels' }, vp);
-    const gFx = S('g', { class: 'fx' }, vp);
+    // Clip everything to the artwork's frame so shapes that run past the edge never show.
+    const clipId = 'clip-' + art.id;
+    S('rect', { x: vx, y: vy, width: vw, height: vh }, S('clipPath', { id: clipId }, defs));
+    const frame = S('g', { 'clip-path': `url(#${clipId})` }, vp);
+    const gRegions = S('g', { class: 'regions' }, frame);
+    const gLabels = S('g', { class: 'labels' }, frame);
+    const gFx = S('g', { class: 'fx' }, frame);
 
     // Striped "find me" pattern per color, used to highlight remaining regions.
     const stripe = Math.max(vw, vh) / 70;
