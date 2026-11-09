@@ -1,7 +1,8 @@
-// App bootstrap: lock page-level gestures, then open the game.
+// App bootstrap: lock page-level gestures, switch between gallery and game.
 (function () {
   // Keep Safari from zooming/scrolling the page itself. Pinch-zoom happens
-  // only inside the artwork (handled in panzoom.js with pointer events).
+  // only inside the artwork (handled in panzoom.js with pointer events);
+  // elements marked .scrollable (the gallery) may still scroll.
   const prevent = (e) => e.preventDefault();
   ['gesturestart', 'gesturechange', 'gestureend'].forEach((t) => document.addEventListener(t, prevent, { passive: false }));
   document.addEventListener('touchmove', (e) => {
@@ -14,11 +15,17 @@
   const app = document.getElementById('app');
   let current = null;
 
-  function openArt(art) {
+  function show(make) {
     if (current) current.destroy();
     app.innerHTML = '';
-    current = PBN.Game(app, art, {});
+    current = make();
+  }
+  function showGallery() {
+    show(() => PBN.Gallery(app, openArt));
+  }
+  function openArt(art) {
+    show(() => PBN.Game(app, art, { onExit: showGallery }));
   }
 
-  openArt(PBN.artworks[0]);
+  showGallery();
 })();

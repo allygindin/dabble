@@ -128,3 +128,39 @@ button { font: inherit; color: inherit; border: 0; background: none; padding: 0;
   .swatch { width: 54px; height: 54px; }
   .swatch .dot { width: 44px; height: 44px; font-size: 18px; }
 }
+
+/* ---------- gallery ---------- */
+.gallery {
+  flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y;
+  overscroll-behavior: contain; padding: 28px 24px 40px;
+}
+.gallery-head { max-width: 1100px; margin: 0 auto 22px; }
+.gallery-head h1 { margin: 0; font-size: 40px; font-weight: 900; letter-spacing: -.5px; }
+.gallery-head h1::after { content: ''; display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); margin-left: 4px; }
+.gallery-head p { margin: 4px 0 0; color: var(--muted); font-size: 18px; font-weight: 600; }
+.cards { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 22px; }
+.card {
+  display: flex; flex-direction: column; text-align: left; background: var(--card); border-radius: 24px; overflow: hidden;
+  box-shadow: 0 1px 0 var(--line), 0 6px 20px rgba(60, 40, 20, .08); transition: transform .15s;
+}
+.card:active { transform: scale(.97); }
+.thumb { position: relative; background: var(--stage); padding: 14px; }
+.thumb-art { width: 100%; height: 100%; display: block; }
+.badge {
+  position: absolute; top: 12px; right: 12px; display: flex; align-items: center; gap: 4px;
+  background: var(--ink); color: #FFFFFF; font-weight: 800; font-size: 14px; padding: 6px 12px 6px 8px; border-radius: 999px;
+}
+.badge svg { width: 18px; height: 18px; }
+.card-body { padding: 14px 18px 18px; display: flex; flex-direction: column; gap: 8px; }
+.card-title { font-size: 21px; font-weight: 800; }
+.card-meta { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 15px; font-weight: 600; }
+.pill { padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 800; background: var(--stage); color: var(--ink); }
+.pill-easy { background: #DDF3D3; color: #2F6B2A; }
+.pill-medium { background: #FFEBC2; color: #8A5A00; }
+.pill-hard { background: #FFD9D3; color: #9B2C1F; }
+.card-progress { display: flex; align-items: center; gap: 10px; margin-top: 2px; }
+.card-progress .bar { flex: 1; width: auto; }
+.card-count { font-weight: 800; font-size: 14px; color: var(--muted); min-width: 56px; text-align: right; font-variant-numeric: tabular-nums; }
+.card.done .card-count { color: #2F6B2A; }
+.card.done .bar i { background: #5CB85C; }
+@media (max-width: 600px) { .gallery { padding: 20px 16px 32px; } .gallery-head h1 { font-size: 32px; } }
