@@ -20,7 +20,7 @@
     if (opts.onExit) {
       const back = H('button', 'icon-btn', bar, PBN.icons.back);
       back.setAttribute('aria-label', 'Back to pictures');
-      back.onclick = () => opts.onExit();
+      PBN.onTap(back, () => opts.onExit());
     }
     H('div', 'title', bar).textContent = art.title;
     const prog = H('div', 'progress', bar);
@@ -66,7 +66,7 @@
       b.style.setProperty('--c', p.hex);
       if (PBN.luminance(p.hex) > 0.42) b.classList.add('light');
       b.setAttribute('aria-label', `Color ${p.n}${p.name ? ' – ' + p.name : ''}`);
-      b.onclick = () => select(p.n);
+      PBN.onTap(b, () => select(p.n));
       swatches[p.n] = b;
     });
     regions.forEach((r, i) => { if (!filled.has(i)) remaining[r.c]++; });
@@ -209,11 +209,25 @@
       });
     }
 
-    const pz = PBN.panZoom(stage, svg, vp, { viewBox: art.viewBox, maxScale: art.maxZoom || 8, onTap });
+    // Numbers fit their region at any zoom, but stop growing past a comfortable
+    // on-screen size, so zooming in shrinks them relative to the artwork.
+    const MAX_LABEL_PX = 34;
+    let lastCap = -1;
+    function fitLabels() {
+      const cap = MAX_LABEL_PX / (pz.unitPx() * pz.scale); // in artwork units
+      if (Math.abs(cap - lastCap) < 1e-3) return;
+      lastCap = cap;
+      labels.forEach((t, i) => t.setAttribute('font-size', Math.round(Math.min(labelPos[i].size, cap) * 100) / 100));
+    }
 
-    fitBtn.onclick = () => pz.reset();
-    soundBtn.onclick = () => { PBN.sound.enabled = !PBN.sound.enabled; renderSound(); if (PBN.sound.enabled) PBN.sound.play('pop'); };
-    restartBtn.onclick = async () => {
+    const pz = PBN.panZoom(stage, svg, vp, { viewBox: art.viewBox, maxScale: art.maxZoom || 8, onTap, onChange: fitLabels });
+    fitLabels();
+    const onResize = () => { lastCap = -1; fitLabels(); };
+    window.addEventListener('resize', onResize);
+
+    PBN.onTap(fitBtn, () => pz.reset());
+    PBN.onTap(soundBtn, () => { PBN.sound.enabled = !PBN.sound.enabled; renderSound(); if (PBN.sound.enabled) PBN.sound.play('pop'); });
+    PBN.onTap(restartBtn, async () => {
       if (!filled.size) return;
       const ok = await PBN.confirm('Start over?', `This clears all your painting on “${art.title}”.`, 'Start over');
       if (!ok) return;
@@ -231,12 +245,13 @@
       updateProgress();
       pz.reset();
       select(1);
-    };
+    });
 
     return {
       destroy() {
         if (closeCelebration) closeCelebration();
         window.removeEventListener('resize', layoutPalette);
+        window.removeEventListener('resize', onResize);
         pz.destroy();
         root.remove();
       },

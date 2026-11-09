@@ -130,6 +130,8 @@
 
     return {
       get scale() { return s; },
+      // Screen pixels per artwork unit at zoom 1.
+      unitPx() { return mapping().k; },
       reset() { s = 1; tx = 0; ty = 0; apply(); },
       zoomBy(f) { const r = stage.getBoundingClientRect(); zoomAt(r.left + r.width / 2, r.top + r.height / 2, f); },
       // Client point -> artwork coordinates (inside the transformed group).

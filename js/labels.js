@@ -12,7 +12,7 @@
 
   PBN.labels = {
     get(art, sig, paths) {
-      const key = 'labels2:' + art.id + ':' + sig;
+      const key = 'labels3:' + art.id + ':' + sig;
       const cached = PBN.store.get(key);
       if (Array.isArray(cached) && cached.length === paths.length) return cached;
       const res = compute(art, paths);
@@ -26,7 +26,9 @@
   function compute(art, paths) {
     const [vx, vy, vw, vh] = art.viewBox;
     const W = Math.max(vw, vh);
-    const minF = W * 0.012, maxF = W * 0.065;
+    // No readability floor: a number must never be bigger than its region
+    // (tiny ones become readable when you zoom in).
+    const minF = W * 0.003, maxF = W * 0.065;
     const sizeFor = (i, clearance) => {
       const k = String(art.regions[i].c).length > 1 ? 1.15 : 1.45;
       return r2(Math.min(maxF, Math.max(minF, clearance * k)));
@@ -36,7 +38,7 @@
     let slow = null;
     return paths.map((p, i) => {
       const r = art.regions[i];
-      if (r.label) return { x: r.label[0], y: r.label[1], size: r.label[2] || minF * 2 };
+      if (r.label) return { x: r.label[0], y: r.label[1], size: r.label[2] || W * 0.03 };
       let hit = found[i];
       if (!hit) {
         slow = slow || pointTester(paths);

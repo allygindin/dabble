@@ -43,7 +43,7 @@
       H('span', 'bar', prog, `<i style="width:${(100 * filled.size) / total}%"></i>`);
       H('span', 'card-count', prog).textContent = done ? 'Finished' : filled.size ? `${Math.round((100 * filled.size) / total)}%` : 'New';
 
-      card.onclick = () => onOpen(art);
+      PBN.onTap(card, () => onOpen(art));
     });
 
     return { destroy() { root.remove(); } };

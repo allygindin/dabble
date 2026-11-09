@@ -42,6 +42,35 @@
     return 0.2126 * r + 0.7152 * g + 0.0722 * b;
   };
 
+  // Tap handler that works for finger, Apple Pencil and mouse. iPad Safari often
+  // never turns a Pencil tap into a "click", so buttons act on pointerup
+  // directly. The click that may follow is swallowed so it can't land on
+  // whatever screen replaced the button (a "ghost click"). Keyboard
+  // activation still arrives as a plain click and works.
+  let lastTapAt = 0;
+  document.addEventListener('click', (e) => {
+    if (Date.now() - lastTapAt < 700) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
+  PBN.onTap = function (el, fn) {
+    let start = null;
+    el.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      start = { id: e.pointerId, x: e.clientX, y: e.clientY };
+    });
+    el.addEventListener('pointercancel', () => { start = null; }); // e.g. the gallery started scrolling
+    el.addEventListener('pointerup', (e) => {
+      if (!start || e.pointerId !== start.id) return;
+      const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y);
+      start = null;
+      const r = el.getBoundingClientRect();
+      const inside = e.clientX >= r.left - 8 && e.clientX <= r.right + 8 && e.clientY >= r.top - 8 && e.clientY <= r.bottom + 8;
+      if (moved > 24 || !inside) return;
+      lastTapAt = Date.now();
+      fn(e);
+    });
+    el.addEventListener('click', (e) => fn(e)); // keyboard / accessibility path
+  };
+
   let toastEl = null, toastTimer = 0;
   PBN.toast = function (msg) {
     if (!toastEl) toastEl = PBN.el('div', 'toast', document.body);
@@ -62,9 +91,9 @@
       const no = PBN.el('button', 'btn ghost', row); no.textContent = 'Cancel';
       const yes = PBN.el('button', 'btn danger', row); yes.textContent = okLabel || 'OK';
       const done = (v) => { ov.remove(); resolve(v); };
-      no.onclick = () => done(false);
-      yes.onclick = () => done(true);
-      ov.addEventListener('click', (e) => { if (e.target === ov) done(false); });
+      PBN.onTap(no, () => done(false));
+      PBN.onTap(yes, () => done(true));
+      PBN.onTap(ov, (e) => { if (e.target === ov) done(false); });
     });
   };
 })();

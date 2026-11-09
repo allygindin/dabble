@@ -18,7 +18,7 @@
     (opts.buttons || []).forEach((b) => {
       const btn = PBN.el('button', 'btn ' + (b.primary ? 'primary' : 'ghost'), row);
       btn.textContent = b.label;
-      btn.onclick = () => { close(); if (b.action) b.action(); };
+      PBN.onTap(btn, () => { close(); if (b.action) b.action(); });
     });
     stop = confetti(canvas, opts.colors);
     return close;
