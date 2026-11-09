@@ -30,7 +30,6 @@
       const card = H('button', 'card' + (done ? ' done' : ''), grid);
       card.setAttribute('aria-label', `${art.title}, ${filled.size} of ${total} painted`);
       const thumb = H('div', 'thumb', card);
-      thumb.style.aspectRatio = `${art.viewBox[2]} / ${art.viewBox[3]}`;
       thumb.appendChild(PBN.renderThumb(art, filled));
       if (done) H('span', 'badge', thumb, PBN.icons.check + '<span>Done</span>');
 
