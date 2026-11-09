@@ -30,20 +30,51 @@
     PBN.onTap(myArtBtn, onMyArt);
     const toggle = H('button', 'switch', controls, '<span class="switch-label">Hide completed</span><span class="switch-track"><span class="switch-thumb"></span></span>');
     toggle.setAttribute('role', 'switch');
+    // Category chips: "All" plus one per tag used by any artwork. The last
+    // choice is remembered; a remembered tag that no longer exists falls back to All.
+    const tags = Array.from(new Set(PBN.artworks.flatMap((a) => a.tags || []))).sort();
+    let category = PBN.store.getSetting('category', 'all');
+    if (category !== 'all' && !tags.includes(category)) category = 'all';
+    const nice = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+    const chipRow = H('div', 'chips', root);
+    chipRow.setAttribute('role', 'group');
+    chipRow.setAttribute('aria-label', 'Filter by category');
+    const chips = ['all', ...tags].map((t) => {
+      const chip = H('button', 'chip', chipRow);
+      chip.textContent = t === 'all' ? 'All' : nice(t);
+      PBN.onTap(chip, () => {
+        category = t;
+        PBN.store.setSetting('category', t);
+        applyFilter();
+      });
+      return { t, chip };
+    });
+
     const grid = H('div', 'cards', root);
     const empty = H('p', 'gallery-empty', root);
-    empty.textContent = 'You\u2019ve finished every picture! They\u2019re all in My Art.';
+    const cards = [];
 
+    // A card shows when it matches the category AND isn't hidden as completed.
     function applyFilter() {
       toggle.setAttribute('aria-checked', String(hideDone));
       toggle.classList.toggle('on', hideDone);
-      let shown = 0;
-      grid.querySelectorAll('.card').forEach((card) => {
-        const hide = hideDone && card.classList.contains('done');
-        card.hidden = hide;
-        if (!hide) shown++;
+      chips.forEach(({ t, chip }) => {
+        chip.classList.toggle('on', t === category);
+        chip.setAttribute('aria-pressed', String(t === category));
+      });
+      let inCategory = 0, shown = 0;
+      cards.forEach(({ art, card, done }) => {
+        const matches = category === 'all' || (art.tags || []).includes(category);
+        if (matches) inCategory++;
+        card.hidden = !matches || (hideDone && done);
+        if (!card.hidden) shown++;
       });
       empty.hidden = shown > 0;
+      if (shown) return;
+      const where = category === 'all' ? '' : ` in “${nice(category)}”`;
+      empty.textContent = inCategory
+        ? `You’ve finished every picture${where}! They’re all in My Art.`
+        : `No pictures${where} yet.`;
     }
     PBN.onTap(toggle, () => {
       hideDone = !hideDone;
@@ -58,6 +89,7 @@
       const done = filled.size === total;
 
       const card = H('button', 'card' + (done ? ' done' : ''), grid);
+      cards.push({ art, card, done });
       card.setAttribute('aria-label', `${art.title}, ${filled.size} of ${total} painted`);
       const thumb = H('div', 'thumb', card);
       thumb.appendChild(PBN.renderThumb(art, filled));
