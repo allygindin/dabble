@@ -66,8 +66,9 @@
       return t;
     });
 
-    const pal = H('nav', 'palette', root);
-    if (palette.length > 16) pal.classList.add('compact'); // smaller swatches for big palettes
+    // One row of full-size swatches; swipe sideways when there are more colors
+    // than fit. ".scrollable" lets the page-gesture lock allow this swipe.
+    const pal = H('nav', 'palette scrollable', root);
     const swatches = {};
     const remaining = {};
     palette.forEach((p) => {
@@ -81,16 +82,28 @@
     });
     regions.forEach((r, i) => { if (!filled.has(i)) remaining[r.c]++; });
 
-    // Spread swatches over evenly-filled rows instead of leaving a lone straggler.
-    function layoutPalette() {
-      const sw = swatches[1].offsetWidth || 66;
-      const gap = parseFloat(getComputedStyle(pal).columnGap) || 12;
-      const fit = Math.max(1, Math.floor((pal.clientWidth - 32 + gap) / (sw + gap)));
-      const rows = Math.ceil(palette.length / fit);
-      pal.style.setProperty('--cols', Math.ceil(palette.length / rows));
+    // Fade the row's edges when more colors are hidden that way.
+    function updateFades() {
+      const max = pal.scrollWidth - pal.clientWidth;
+      pal.classList.toggle('more-left', pal.scrollLeft > 4);
+      pal.classList.toggle('more-right', pal.scrollLeft < max - 4);
     }
-    layoutPalette();
-    window.addEventListener('resize', layoutPalette);
+    pal.addEventListener('scroll', updateFades, { passive: true });
+    window.addEventListener('resize', updateFades);
+    // Mouse wheel / trackpad on a Mac: vertical wheel scrolls the row sideways.
+    pal.addEventListener('wheel', (e) => {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { pal.scrollLeft += e.deltaY; e.preventDefault(); }
+    }, { passive: false });
+    // Bring a swatch fully into view (used when the game picks a color for you).
+    function revealSwatch(n, smooth) {
+      const b = swatches[n];
+      const pad = 24;
+      const left = b.offsetLeft - pad, right = b.offsetLeft + b.offsetWidth + pad;
+      let target = null;
+      if (left < pal.scrollLeft) target = left;
+      else if (right > pal.scrollLeft + pal.clientWidth) target = right - pal.clientWidth;
+      if (target !== null) pal.scrollTo({ left: target, behavior: smooth ? 'smooth' : 'auto' });
+    }
 
     // ---------- state rendering ----------
     function paintFilled(i) {
@@ -130,7 +143,7 @@
       selected = n;
       if (n != null) setHighlight(n, true);
       if (prev != null) updateSwatch(prev);
-      if (n != null) updateSwatch(n);
+      if (n != null) { updateSwatch(n); revealSwatch(n, true); }
       selName.innerHTML = n == null ? '' : `<i style="background:${palette[n - 1].hex}"></i>${n}${palette[n - 1].name ? ' \u00b7 ' + palette[n - 1].name : ''}`;
     }
     function nextIncomplete(from) {
@@ -150,6 +163,8 @@
     updateProgress();
     renderSound();
     if (filled.size < total) select(nextIncomplete(palette.length));
+    updateFades();
+    if (selected != null) revealSwatch(selected, false);
 
     // ---------- feedback ----------
     function ripple(cx, cy, color) {
@@ -287,7 +302,7 @@
     return {
       destroy() {
         if (closeCelebration) closeCelebration();
-        window.removeEventListener('resize', layoutPalette);
+        window.removeEventListener('resize', updateFades);
         window.removeEventListener('resize', onResize);
         pz.destroy();
         root.remove();

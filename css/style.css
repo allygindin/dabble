@@ -71,7 +71,21 @@ button { font: inherit; color: inherit; border: 0; background: none; padding: 0;
 @keyframes ripple { from { transform: scale(.3); opacity: .9; } to { transform: scale(1.5); opacity: 0; } }
 
 /* ---------- palette ---------- */
-.palette { display: grid; grid-template-columns: repeat(var(--cols, 8), auto); justify-content: center; justify-items: center; gap: 10px 12px; padding: 16px 16px 18px; }
+.palette {
+  display: flex; gap: 12px; padding: 16px 20px 18px;
+  overflow-x: auto; overflow-y: hidden; touch-action: pan-x; overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  --fade-l: 0px; --fade-r: 0px;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent 100%);
+}
+.palette::-webkit-scrollbar { display: none; }
+.palette.more-left { --fade-l: 36px; }
+.palette.more-right { --fade-r: 36px; }
+/* auto margins center a short row, and collapse to 0 when the row overflows */
+.palette .swatch { flex: none; }
+.palette .swatch:first-child { margin-left: auto; }
+.palette .swatch:last-child { margin-right: auto; }
 .swatch { position: relative; width: 66px; height: 66px; display: grid; place-items: center; border-radius: 50%; transition: transform .18s ease; }
 .swatch .dot {
   width: 54px; height: 54px; border-radius: 50%; background: var(--c);
@@ -94,10 +108,6 @@ button { font: inherit; color: inherit; border: 0; background: none; padding: 0;
 .swatch.done .dot svg { display: block; color: var(--ink); }
 .swatch:active:not(.done) { transform: scale(.94); }
 
-.palette.compact { gap: 8px 8px; padding-top: 12px; padding-bottom: 14px; }
-.palette.compact .swatch { width: 56px; height: 56px; }
-.palette.compact .swatch .dot { width: 46px; height: 46px; font-size: 18px; }
-.palette.compact .swatch .left { min-width: 21px; height: 21px; font-size: 11px; top: -3px; right: -5px; }
 
 /* ---------- toast / modal ---------- */
 .toast {
