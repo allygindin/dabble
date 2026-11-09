@@ -71,6 +71,17 @@
     });
     regions.forEach((r, i) => { if (!filled.has(i)) remaining[r.c]++; });
 
+    // Spread swatches over evenly-filled rows instead of leaving a lone straggler.
+    function layoutPalette() {
+      const sw = swatches[1].offsetWidth || 66;
+      const gap = 12;
+      const fit = Math.max(1, Math.floor((pal.clientWidth - 32 + gap) / (sw + gap)));
+      const rows = Math.ceil(palette.length / fit);
+      pal.style.setProperty('--cols', Math.ceil(palette.length / rows));
+    }
+    layoutPalette();
+    window.addEventListener('resize', layoutPalette);
+
     // ---------- state rendering ----------
     function paintFilled(i) {
       const hex = palette[regions[i].c - 1].hex;
@@ -225,6 +236,7 @@
     return {
       destroy() {
         if (closeCelebration) closeCelebration();
+        window.removeEventListener('resize', layoutPalette);
         pz.destroy();
         root.remove();
       },
