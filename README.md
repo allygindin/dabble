@@ -101,6 +101,24 @@ sized to fit.
   the exact shapes, so changing a picture starts it over rather than leaving
   wrong areas painted.
 
+### Checking a picture
+
+Open **`/check.html`** from the same server (e.g. `http://localhost:8000/check.html`).
+It tests every picture listed in `index.html` and lists anything to fix:
+
+- **Tap size:** at the picture's `maxZoom`, every region's visible part must
+  fit a circle at least 44px across on an iPad screen (Apple's minimum tap
+  size). Raise `maxZoom` or make the shape bigger/thicker if one fails.
+- **Hidden regions:** a region completely covered by later regions.
+- **Colors too alike:** any two palette colors must differ clearly
+  (CIE ΔE ≥ 12), and none may be so pale it looks unpainted.
+- **Readable swatch numbers:** the number on every swatch needs 4.5:1
+  contrast. Very light or fairly dark colors pass; mid-brightness ones fail.
+- **Confusable numbers on similar shades:** two similar colors (ΔE < 25)
+  must not have numbers that are easy to misread for each other at small
+  sizes (1/7, 3/8, 5/6, 6/8, 8/9, 0/8, e.g. 16 and 18). Keep shade families
+  together and reorder the palette if one is flagged.
+
 ## Project layout
 
 ```
@@ -122,6 +140,7 @@ js/sound.js           small synthesized sound effects
 js/ui.js              DOM helpers, icons, toast, confirm dialog
 js/app.js             startup, page-gesture lock, screen switching
 serve_https.py        local https server for iPad testing
+check.html            artwork checker (tap sizes, palette rules)
 ```
 
 The icons are PNGs because iOS requires them. If you change `icons/icon.svg`,
