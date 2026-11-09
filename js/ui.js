@@ -25,6 +25,8 @@
     soundOff: stroke('<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9.5l5 5M22 9.5l-5 5"/>'),
     restart: stroke('<path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/>'),
     check: stroke('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
+    upload: stroke('<rect x="3.5" y="6" width="13" height="13" rx="2"/><path d="M3.5 16l4-4 3 3 2-2 4 4"/><path d="M19.5 3v6M16.5 6h6"/>'),
+    trash: stroke('<path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13M10 11v6M14 11v6"/>'),
     frame: stroke('<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 16l5-5 4 4 3-3 5 5"/><circle cx="15.5" cy="9" r="1.5"/>'),
     hint: stroke('<path d="M9.5 18h5M10.5 21h3"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/>'),
   };
@@ -45,6 +47,9 @@
     return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
   };
   PBN.INK = '#2F3441';
+  // Tap-size rule shared by the checker and photo uploads: at max zoom every
+  // region must fit a 44px circle on a conservative iPad artwork area.
+  PBN.TAP = { minTapPx: 44, stages: [[1108, 500], [748, 780]] };
   // Number color for a swatch: whichever of white / ink reads better on it.
   PBN.textOn = function (hex) {
     return PBN.contrast(hex, PBN.INK) >= PBN.contrast(hex, '#FFFFFF') ? PBN.INK : '#FFFFFF';

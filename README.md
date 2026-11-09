@@ -32,6 +32,23 @@ full-screen with its own icon.
 address *and* for Safari vs. the home-screen app. Switching between them
 starts you fresh.
 
+## Uploading your own photos
+
+On the start screen tap **Upload picture**: choose a photo, crop it, pick the
+number of colors (8–30) and the detail level, check the numbered preview,
+then name it and give it a category. Everything happens on the iPad; the
+photo is never sent anywhere.
+
+- Conversion runs in a background worker (`js/convert.js`). Small or thin
+  areas are merged into their neighbors until every area passes the tap
+  rule, and palettes follow the same color rules as the checker, so you may
+  get fewer colors than you asked for when a photo's shades are very close.
+- Uploaded pictures and their progress are stored in IndexedDB (not
+  localStorage). Like all website data, Safari may clear it if the site
+  isn't used for a long time; adding the game to the home screen avoids that.
+- Uploaded pictures can be deleted with the trash button on their painting
+  screen.
+
 ## Adding a picture
 
 1. Create a file in `artworks/`, e.g. `artworks/owl.js`.
@@ -112,8 +129,9 @@ It tests every picture listed in `index.html` and lists anything to fix:
 - **Hidden regions:** a region completely covered by later regions.
 - **Colors too alike:** any two palette colors must differ clearly
   (CIE ΔE ≥ 12), and none may be so pale it looks unpainted.
-- **Readable swatch numbers:** the number on every swatch needs 4.5:1
-  contrast. Very light or fairly dark colors pass; mid-brightness ones fail.
+- **Readable swatch numbers:** a swatch number needs 4.5:1 contrast. Very
+  light or fairly dark colors pass on their own; for mid-brightness colors
+  the game shows the number on a white badge (the checker notes these).
 - **Confusable numbers on similar shades:** two similar colors (ΔE < 25)
   must not have numbers that are easy to misread for each other at small
   sizes (1/7, 3/8, 5/6, 6/8, 8/9, 0/8, e.g. 16 and 18). Keep shade families
@@ -135,6 +153,10 @@ js/panzoom.js         pinch-zoom, pan, and tap detection
 js/game.js            painting screen: palette, fill rules, feedback
 js/gallery.js         start screen with progress thumbnails
 js/myart.js           My Art: finished pictures + full-size viewer
+js/upload.js          Upload picture screens (choose, crop, settings + preview)
+js/convert.js         photo -> paint-by-numbers conversion (no DOM)
+js/convert-worker.js  runs convert.js off the main thread
+js/db.js              IndexedDB storage for uploaded pictures + progress
 js/celebrate.js       confetti + finished-picture overlay
 js/sound.js           small synthesized sound effects
 js/ui.js              DOM helpers, icons, toast, confirm dialog

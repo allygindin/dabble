@@ -12,6 +12,15 @@
 
   PBN.labels = {
     get(art, sig, paths) {
+      // Uploaded pictures keep their label cache inside their IndexedDB record.
+      if (art.user) {
+        const lc = art.labelCache;
+        if (lc && lc.sig === sig && lc.labels.length === paths.length) return lc.labels;
+        const labels = compute(art, paths);
+        art.labelCache = { sig, labels };
+        if (PBN.userArt && PBN.userArt.has(art.id)) PBN.userArt.save(art).catch(() => {});
+        return labels;
+      }
       const key = 'labels4:' + art.id + ':' + sig;
       const cached = PBN.store.get(key);
       if (Array.isArray(cached) && cached.length === paths.length) return cached;

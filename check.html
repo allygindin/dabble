@@ -86,8 +86,9 @@ function checkArt(G, art) {
   for (let a = 0; a < pal.length; a++) {
     const fromWhite = dE(pal[a].hex, '#FFFFFF');
     if (fromWhite < RULES.minFromWhite) problems.push(`Color ${pal[a].n} (${pal[a].name}) is too close to white (ΔE ${fromWhite.toFixed(1)}); it would look unpainted.`);
+    // Swatch numbers below the contrast bar are drawn on a white badge by the game, so they stay readable.
     const contrast = PBN.contrast(pal[a].hex, PBN.textOn(pal[a].hex));
-    if (contrast < RULES.minContrast) problems.push(`Swatch ${pal[a].n} (${pal[a].name}): number contrast ${contrast.toFixed(2)}:1 (needs ${RULES.minContrast}).`);
+    if (contrast < RULES.minContrast) warnings.push(`Swatch ${pal[a].n} (${pal[a].name}) is mid-brightness (contrast ${contrast.toFixed(2)}:1), so its number is shown on a white badge.`);
     for (let b = a + 1; b < pal.length; b++) {
       const d = dE(pal[a].hex, pal[b].hex);
       if (d < closest.d) closest = { d, a: pal[a], b: pal[b] };
@@ -117,8 +118,10 @@ function render(results) {
   });
 }
 
-document.getElementById('game').addEventListener('load', (e) => {
+document.getElementById('game').addEventListener('load', async (e) => {
   const G = e.target.contentWindow;
+  if (G.PBN.ready) await G.PBN.ready; // uploaded pictures load from IndexedDB
+  if (G.PBN.TAP) { RULES.minTapPx = G.PBN.TAP.minTapPx; RULES.stages = G.PBN.TAP.stages; }
   const results = G.PBN.artworks.map((art) => {
     try { return checkArt(G, art); } catch (err) { return { id: art.id, title: art.title, problems: ['Checker error: ' + err.message], warnings: [], ok: false }; }
   });

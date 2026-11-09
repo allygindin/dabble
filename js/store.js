@@ -11,14 +11,18 @@
 
   PBN.store = {
     get, set,
+    // Uploaded pictures keep their progress in IndexedDB (see db.js).
     loadProgress(id, sig) {
+      if (PBN.userArt && PBN.userArt.has(id)) return PBN.userArt.loadProgress(id, sig);
       const p = get('progress:' + id);
       return new Set(p && p.sig === sig ? p.filled : []);
     },
     saveProgress(id, sig, filled, total) {
+      if (PBN.userArt && PBN.userArt.has(id)) return PBN.userArt.saveProgress(id, sig, filled, total);
       set('progress:' + id, { sig, filled: Array.from(filled), total, updated: Date.now() });
     },
     clearProgress(id) {
+      if (PBN.userArt && PBN.userArt.has(id)) return PBN.userArt.clearProgress(id);
       try { localStorage.removeItem(P + 'progress:' + id); } catch (e) { /* ignore */ }
     },
     getSetting(name, fallback) {

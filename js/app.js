@@ -21,7 +21,7 @@
     current = make();
   }
   function showGallery() {
-    show(() => PBN.Gallery(app, openArt, showMyArt));
+    show(() => PBN.Gallery(app, openArt, showMyArt, showUpload));
   }
   function showMyArt() {
     show(() => PBN.MyArt(app, { onBack: showGallery, onView: viewArt }));
@@ -29,9 +29,15 @@
   function viewArt(art) {
     show(() => PBN.ArtViewer(app, art, { onBack: showMyArt, onRestart: openArt }));
   }
+  function showUpload() {
+    show(() => PBN.Upload(app, { onBack: showGallery, onSaved: openArt }));
+  }
   function openArt(art) {
     show(() => PBN.Game(app, art, { onExit: showGallery }));
   }
 
-  showGallery();
+  // Load uploaded pictures from IndexedDB before showing anything.
+  PBN.ready = (PBN.userArt.available ? PBN.userArt.init() : Promise.resolve())
+    .catch((e) => console.warn('Could not load uploaded pictures', e));
+  PBN.ready.then(showGallery);
 })();

@@ -37,6 +37,18 @@
     soundBtn.setAttribute('aria-label', 'Sound');
     const restartBtn = H('button', 'icon-btn', bar, PBN.icons.restart);
     restartBtn.setAttribute('aria-label', 'Start over');
+    // Uploaded pictures can be deleted (built-in ones can't).
+    if (art.user) {
+      const delBtn = H('button', 'icon-btn', bar, PBN.icons.trash);
+      delBtn.setAttribute('aria-label', 'Delete this picture');
+      PBN.onTap(delBtn, async () => {
+        const ok = await PBN.confirm('Delete this picture?', `“${art.title}” and its progress will be removed from this iPad.`, 'Delete');
+        if (!ok) return;
+        try { await PBN.userArt.remove(art.id); } catch (e) { PBN.toast('Couldn’t delete it'); return; }
+        PBN.toast('Picture deleted');
+        if (opts.onExit) opts.onExit();
+      });
+    }
 
     const stage = H('div', 'stage', root);
     const svg = S('svg', { viewBox: `${vx} ${vy} ${vw} ${vh}`, preserveAspectRatio: 'xMidYMid meet', class: 'art' }, stage);
@@ -76,6 +88,9 @@
       const b = H('button', 'swatch', pal, `<span class="dot"><span class="num">${p.n}</span>${PBN.icons.check}</span><span class="left"></span>`);
       b.style.setProperty('--c', p.hex);
       if (PBN.textOn(p.hex) !== '#FFFFFF') b.classList.add('light');
+      // Mid-brightness colors can't give white or dark text enough contrast:
+      // show their number on a white badge instead.
+      if (PBN.contrast(p.hex, PBN.textOn(p.hex)) < 4.5) b.classList.add('badge-num');
       b.setAttribute('aria-label', `Color ${p.n}${p.name ? ' – ' + p.name : ''}`);
       PBN.onTap(b, () => select(p.n));
       swatches[p.n] = b;

@@ -29,10 +29,14 @@
 
   // Short hash of an artwork's geometry + colors. Saved progress and cached
   // label positions are tied to it, so editing an artwork file invalidates them.
+  const sigCache = new WeakMap(); // uploaded pictures have large paths; hash each one once
   PBN.signature = function (art) {
+    if (sigCache.has(art)) return sigCache.get(art);
     let h = 5381;
     const s = art.regions.map((r) => r.c + ':' + PBN.shapeToPath(r)).join('|') + '#' + art.viewBox.join(',');
     for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
-    return (h >>> 0).toString(36);
+    const sig = (h >>> 0).toString(36);
+    sigCache.set(art, sig);
+    return sig;
   };
 })();

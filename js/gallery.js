@@ -18,7 +18,7 @@
     return svg;
   };
 
-  PBN.Gallery = function (container, onOpen, onMyArt) {
+  PBN.Gallery = function (container, onOpen, onMyArt, onUpload) {
     const root = H('section', 'gallery scrollable', container);
     const head = H('header', 'gallery-head', root);
     const titles = H('div', 'gallery-titles', head);
@@ -32,6 +32,11 @@
     const myArtBtn = H('button', 'pill-btn', controls, `${PBN.icons.frame}<span>My Art</span><span class="count">${doneCount}</span>`);
     myArtBtn.setAttribute('aria-label', `My Art, ${doneCount} finished`);
     PBN.onTap(myArtBtn, onMyArt);
+    const uploadBtn = H('button', 'pill-btn', controls, `${PBN.icons.upload}<span>Upload picture</span>`);
+    PBN.onTap(uploadBtn, () => {
+      if (!PBN.userArt.available) { PBN.toast('This browser can’t store uploaded pictures'); return; }
+      onUpload();
+    });
     const toggle = H('button', 'switch', controls, '<span class="switch-label">Hide completed</span><span class="switch-track"><span class="switch-thumb"></span></span>');
     toggle.setAttribute('role', 'switch');
     // Category chips: "All" plus one per tag used by any artwork. The last
@@ -103,6 +108,7 @@
       H('div', 'card-title', body).textContent = art.title;
       const meta = H('div', 'card-meta', body);
       H('span', 'pill pill-' + (art.difficulty || '').toLowerCase(), meta).textContent = art.difficulty || '';
+      if (art.user) H('span', 'pill pill-user', meta).textContent = 'Uploaded';
       H('span', '', meta).textContent = `${total} areas · ${art.palette.length} colors`;
 
       const prog = H('div', 'card-progress', body);
