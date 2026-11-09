@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Source for the PNG app icons. Artwork stays inside the central 80% so it also works as a maskable icon. -->
+  <rect width="512" height="512" fill="#FBF1E6"/>
+  <circle cx="176" cy="176" r="76" fill="#FF7A59"/>
+  <circle cx="336" cy="176" r="76" fill="#FFC94A"/>
+  <circle cx="176" cy="336" r="76" fill="#4FA6D6"/>
+  <circle cx="336" cy="336" r="73" fill="#FFFFFF" stroke="#A9B0BC" stroke-width="6"/>
+  <text x="336" y="336" dy="0.35em" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, sans-serif" font-weight="800" font-size="96" fill="#7D8594">4</text>
+</svg>
