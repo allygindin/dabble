@@ -14,7 +14,7 @@
     return svg;
   };
 
-  PBN.Gallery = function (container, onOpen) {
+  PBN.Gallery = function (container, onOpen, onMyArt) {
     const root = H('section', 'gallery scrollable', container);
     const head = H('header', 'gallery-head', root);
     const titles = H('div', 'gallery-titles', head);
@@ -23,11 +23,16 @@
 
     // "Hide completed" switch, remembered in localStorage.
     let hideDone = !!PBN.store.getSetting('hideCompleted', false);
-    const toggle = H('button', 'switch', head, '<span class="switch-label">Hide completed</span><span class="switch-track"><span class="switch-thumb"></span></span>');
+    const controls = H('div', 'gallery-controls', head);
+    const doneCount = PBN.completedArtworks().length;
+    const myArtBtn = H('button', 'pill-btn', controls, `${PBN.icons.frame}<span>My Art</span><span class="count">${doneCount}</span>`);
+    myArtBtn.setAttribute('aria-label', `My Art, ${doneCount} finished`);
+    PBN.onTap(myArtBtn, onMyArt);
+    const toggle = H('button', 'switch', controls, '<span class="switch-label">Hide completed</span><span class="switch-track"><span class="switch-thumb"></span></span>');
     toggle.setAttribute('role', 'switch');
     const grid = H('div', 'cards', root);
     const empty = H('p', 'gallery-empty', root);
-    empty.textContent = 'You\u2019ve finished every picture! Turn off \u201cHide completed\u201d to see them.';
+    empty.textContent = 'You\u2019ve finished every picture! They\u2019re all in My Art.';
 
     function applyFilter() {
       toggle.setAttribute('aria-checked', String(hideDone));

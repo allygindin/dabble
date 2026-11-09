@@ -21,7 +21,13 @@
     current = make();
   }
   function showGallery() {
-    show(() => PBN.Gallery(app, openArt));
+    show(() => PBN.Gallery(app, openArt, showMyArt));
+  }
+  function showMyArt() {
+    show(() => PBN.MyArt(app, { onBack: showGallery, onView: viewArt }));
+  }
+  function viewArt(art) {
+    show(() => PBN.ArtViewer(app, art, { onBack: showMyArt, onRestart: openArt }));
   }
   function openArt(art) {
     show(() => PBN.Game(app, art, { onExit: showGallery }));

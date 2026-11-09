@@ -116,6 +116,7 @@ js/labels.js          automatic number placement and sizing
 js/panzoom.js         pinch-zoom, pan, and tap detection
 js/game.js            painting screen: palette, fill rules, feedback
 js/gallery.js         start screen with progress thumbnails
+js/myart.js           My Art: finished pictures + full-size viewer
 js/celebrate.js       confetti + finished-picture overlay
 js/sound.js           small synthesized sound effects
 js/ui.js              DOM helpers, icons, toast, confirm dialog
