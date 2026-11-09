@@ -18,6 +18,7 @@
     id: 'flower',
     title: 'Sunny Flower',
     difficulty: 'Easy',
+    tags: ['flowers', 'nature', 'garden'],
     viewBox: [0, 0, 400, 400],
     palette: [
       ['#9ED4F2', 'Sky'],

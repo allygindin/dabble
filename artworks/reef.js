@@ -54,6 +54,7 @@
     id: 'coral-reef',
     title: 'Coral Reef',
     difficulty: 'Hard',
+    tags: ['ocean', 'animals', 'fish'],
     viewBox: [0, 0, 600, 450],
     maxZoom: 10,
     palette: [

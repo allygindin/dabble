@@ -17,9 +17,34 @@
   PBN.Gallery = function (container, onOpen) {
     const root = H('section', 'gallery scrollable', container);
     const head = H('header', 'gallery-head', root);
-    H('h1', '', head).textContent = 'Dabble';
-    H('p', '', head).textContent = 'Pick a picture to paint';
+    const titles = H('div', 'gallery-titles', head);
+    H('h1', '', titles).textContent = 'Dabble';
+    H('p', '', titles).textContent = 'Pick a picture to paint';
+
+    // "Hide completed" switch, remembered in localStorage.
+    let hideDone = !!PBN.store.getSetting('hideCompleted', false);
+    const toggle = H('button', 'switch', head, '<span class="switch-label">Hide completed</span><span class="switch-track"><span class="switch-thumb"></span></span>');
+    toggle.setAttribute('role', 'switch');
     const grid = H('div', 'cards', root);
+    const empty = H('p', 'gallery-empty', root);
+    empty.textContent = 'You\u2019ve finished every picture! Turn off \u201cHide completed\u201d to see them.';
+
+    function applyFilter() {
+      toggle.setAttribute('aria-checked', String(hideDone));
+      toggle.classList.toggle('on', hideDone);
+      let shown = 0;
+      grid.querySelectorAll('.card').forEach((card) => {
+        const hide = hideDone && card.classList.contains('done');
+        card.hidden = hide;
+        if (!hide) shown++;
+      });
+      empty.hidden = shown > 0;
+    }
+    PBN.onTap(toggle, () => {
+      hideDone = !hideDone;
+      PBN.store.setSetting('hideCompleted', hideDone);
+      applyFilter();
+    });
 
     PBN.artworks.forEach((art) => {
       const sig = PBN.signature(art);
@@ -45,6 +70,7 @@
 
       PBN.onTap(card, () => onOpen(art));
     });
+    applyFilter();
 
     return { destroy() { root.remove(); } };
   };

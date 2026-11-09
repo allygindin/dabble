@@ -42,6 +42,31 @@
       });
     }
 
+    // Smooth camera move: bring artwork point (cx, cy) to the middle of the
+    // stage at zoom `target`. Interpolates the viewed point and the zoom
+    // (in log space) so the motion doesn't wobble. Any touch cancels it.
+    let anim = 0;
+    function stopAnim() { if (anim) { cancelAnimationFrame(anim); anim = 0; } }
+    function animateTo(cx, cy, target, ms, done) {
+      stopAnim();
+      const m = mapping();
+      const mid = toUser(m.r.left + m.r.width / 2, m.r.top + m.r.height / 2, m);
+      const s0 = s, c0x = (mid.x - tx) / s, c0y = (mid.y - ty) / s;
+      const s1 = clampS(target);
+      const t0 = performance.now();
+      const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+      const step = (now) => {
+        const k = Math.min(1, (now - t0) / ms), e = ease(k);
+        s = Math.exp(Math.log(s0) + (Math.log(s1) - Math.log(s0)) * e);
+        const vx2 = c0x + (cx - c0x) * e, vy2 = c0y + (cy - c0y) * e;
+        tx = mid.x - vx2 * s; ty = mid.y - vy2 * s;
+        clamp(); apply();
+        if (k < 1) anim = requestAnimationFrame(step);
+        else { anim = 0; if (done) done(); }
+      };
+      anim = requestAnimationFrame(step);
+    }
+
     function zoomAt(cx, cy, factor) {
       const u = toUser(cx, cy);
       const ns = clampS(s * factor);
@@ -64,6 +89,7 @@
     }
 
     function down(e) {
+      stopAnim();
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       try { stage.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -110,6 +136,7 @@
 
     function wheel(e) {
       e.preventDefault();
+      stopAnim();
       if (e.ctrlKey) zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.01));
       else if (s > 1) {
         const k = mapping().k;
@@ -130,15 +157,17 @@
 
     return {
       get scale() { return s; },
+      animateTo,
       // Screen pixels per artwork unit at zoom 1.
       unitPx() { return mapping().k; },
-      reset() { s = 1; tx = 0; ty = 0; apply(); },
+      reset() { stopAnim(); s = 1; tx = 0; ty = 0; apply(); },
       zoomBy(f) { const r = stage.getBoundingClientRect(); zoomAt(r.left + r.width / 2, r.top + r.height / 2, f); },
       // Client point -> artwork coordinates (inside the transformed group).
       toContent(cx, cy) { const u = toUser(cx, cy); return { x: (u.x - tx) / s, y: (u.y - ty) / s }; },
       // Screen pixels -> artwork units at the current zoom.
       pxToContent(px) { return px / mapping().k / s; },
       destroy() {
+        stopAnim();
         stage.removeEventListener('pointerdown', down);
         stage.removeEventListener('pointermove', move);
         stage.removeEventListener('pointerup', onUp);

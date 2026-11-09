@@ -16,6 +16,7 @@
     id: 'mountain-lake',
     title: 'Mountain Lake',
     difficulty: 'Medium',
+    tags: ['landscape', 'mountains', 'nature'],
     viewBox: [0, 0, 600, 400],
     palette: [
       ['#7EC8E3', 'Sky'],

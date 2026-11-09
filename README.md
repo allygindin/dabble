@@ -49,6 +49,7 @@ PBN.registerArtwork({
   id: 'owl',                 // unique, used as the save-game key
   title: 'Night Owl',
   difficulty: 'Medium',      // 'Easy' | 'Medium' | 'Hard' (sets the badge color)
+  tags: ['birds', 'night'],  // optional, lowercase words for future categories
   viewBox: [0, 0, 600, 400], // drawing coordinates: x, y, width, height
   maxZoom: 8,                // optional, how far pinch-zoom may go (default 8)
   palette: [                 // color 1, color 2, color 3 ... in this order

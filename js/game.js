@@ -26,6 +26,8 @@
     const prog = H('div', 'progress', bar);
     const progText = H('span', '', prog);
     const progBar = H('span', 'bar', prog, '<i></i>').firstChild;
+    const hintBtn = H('button', 'icon-btn', bar, PBN.icons.hint);
+    hintBtn.setAttribute('aria-label', 'Hint: show me a spot to paint');
     const fitBtn = H('button', 'icon-btn', bar, PBN.icons.fit);
     fitBtn.setAttribute('aria-label', 'Reset zoom');
     const soundBtn = H('button', 'icon-btn', bar);
@@ -226,6 +228,32 @@
     window.addEventListener('resize', onResize);
 
     PBN.onTap(fitBtn, () => pz.reset());
+
+    // ---------- hint ----------
+    // Zooms to one unpainted region of the selected color and pulses it.
+    // Repeated taps step through the remaining regions instead of repeating one.
+    const hintCursor = {};
+    const HINT_LABEL_PX = 30; // target on-screen size of the hinted region's number
+    function hint() {
+      if (filled.size === total) { PBN.toast('Every area is painted!'); return; }
+      if (selected == null) select(nextIncomplete(palette.length));
+      else if (remaining[selected] === 0) { PBN.toast(`Color ${selected} is all done. Pick another color`); return; }
+      const c = selected;
+      const todo = [];
+      regions.forEach((r, i) => { if (r.c === c && !filled.has(i)) todo.push(i); });
+      const i = todo[(hintCursor[c] = ((hintCursor[c] ?? -1) + 1) % todo.length)];
+      const L = labelPos[i];
+      const scale = Math.max(1, HINT_LABEL_PX / (L.size * pz.unitPx()));
+      pz.animateTo(L.x, L.y, scale, 550, () => pulse(i));
+    }
+    function pulse(i) {
+      const p = paths[i];
+      p.classList.remove('pulse');
+      void p.getBoundingClientRect(); // restart the animation if hinted twice
+      p.classList.add('pulse');
+      setTimeout(() => p.classList.remove('pulse'), 1900);
+    }
+    PBN.onTap(hintBtn, hint);
     PBN.onTap(soundBtn, () => { PBN.sound.enabled = !PBN.sound.enabled; renderSound(); if (PBN.sound.enabled) PBN.sound.play('pop'); });
     PBN.onTap(restartBtn, async () => {
       if (!filled.size) return;
