@@ -42,4 +42,11 @@
   PBN.ready = (PBN.userArt.available ? PBN.userArt.init() : Promise.resolve())
     .catch((e) => console.warn('Could not load uploaded pictures', e));
   PBN.ready.then(showGallery);
+
+  // Offline support (needs https or localhost). Also ask the browser to never
+  // clear saved progress and uploaded pictures to free up space.
+  if ('serviceWorker' in navigator && window.isSecureContext) {
+    navigator.serviceWorker.register('sw.js').catch((e) => console.warn('Offline mode unavailable', e));
+  }
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 })();

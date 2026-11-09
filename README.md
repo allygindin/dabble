@@ -3,7 +3,20 @@
 A paint-by-numbers game that runs in Safari. Plain HTML, CSS and JavaScript:
 no frameworks, no build step. Open `index.html` through any static web server.
 
-## Running it
+## Playing without the Mac (offline)
+
+Host the folder on any static web host with https (e.g. GitHub Pages), open
+it once in iPad Safari and tap Share → **Add to Home Screen**. `sw.js` (a
+service worker) saves every file on the iPad, so the home-screen app then
+works with no Mac and no internet. When online it fetches the latest files,
+so updates you publish show up on the next launch (after 3 s without a
+response it uses the saved copy). If you add a new file, add it to `FILES`
+in `sw.js` too.
+
+Progress and uploaded pictures stay on the iPad. They belong to the address
+the game was opened from, so moving to a new address starts fresh.
+
+## Running it from the Mac (for development)
 
 From this folder:
 
