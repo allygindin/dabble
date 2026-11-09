@@ -66,6 +66,9 @@
   // activation still arrives as a plain click and works.
   let lastTapAt = 0;
   document.addEventListener('click', (e) => {
+    if (!e.isTrusted) return; // clicks the app triggers itself are never ghosts
+    const t = e.target;
+    if (t && t.closest && t.closest('input, label, select, textarea')) return; // native controls (e.g. the photo picker)
     if (Date.now() - lastTapAt < 700) { e.preventDefault(); e.stopPropagation(); }
   }, true);
   PBN.onTap = function (el, fn) {

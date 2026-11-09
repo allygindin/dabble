@@ -53,8 +53,6 @@
     H('span', 'title-text', titleBox).textContent = 'Upload picture';
     const stepLabel = H('span', 'sel-name', titleBox);
     const body = H('div', 'upload-body', root);
-    const file = H('input', '', root);
-    file.type = 'file'; file.accept = 'image/*'; file.hidden = true;
 
     let step = 'pick', src = null, crop = null, ratio = null, onResize = null, cleanup = null;
     const settings = { colors: 16, detail: 3 };
@@ -72,13 +70,25 @@
       const card = H('div', 'upload-pick', body);
       card.innerHTML = `<div class="pick-icon">${PBN.icons.upload}</div><h2>Turn a photo into a puzzle</h2>
         <p>Pick a photo from your library. Next you'll crop it, choose how many colors and how much detail, and preview the puzzle before saving.</p>`;
-      const btn = H('button', 'btn primary', card);
-      btn.textContent = 'Choose photo';
-      PBN.onTap(btn, () => file.click());
+      photoButton(card, 'btn primary', 'Choose photo');
     }
-    file.addEventListener('change', async () => {
-      const f = file.files && file.files[0];
-      file.value = '';
+
+    // A photo button is the browser's own file input, invisible and stretched
+    // over the button, so a finger or Pencil tap lands on the real control.
+    // (Opening it from script with input.click() is unreliable on iPad.)
+    function photoButton(parent, cls, text) {
+      const label = H('label', cls + ' file-btn', parent);
+      H('span', '', label).textContent = text;
+      const input = H('input', '', label);
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.setAttribute('aria-label', text);
+      input.addEventListener('change', () => onPhoto(input));
+      return label;
+    }
+    async function onPhoto(input) {
+      const f = input.files && input.files[0];
+      input.value = '';
       if (!f) return;
       try {
         src = await loadImage(f);
@@ -86,7 +96,7 @@
         if (!fields.name) fields.name = `My picture ${PBN.userArt.count() + 1}`;
         showCrop();
       } catch (e) { PBN.toast('Couldn’t open that image'); }
-    });
+    }
 
     // Draw the photo into a canvas (max 2048px), which also bakes in its orientation.
     async function loadImage(f) {
@@ -151,9 +161,8 @@
         });
       });
       const actions = H('div', 'crop-actions', tools);
-      const another = H('button', 'btn ghost', actions); another.textContent = 'Choose another';
+      photoButton(actions, 'btn ghost', 'Choose another');
       const next = H('button', 'btn primary', actions); next.textContent = 'Next';
-      PBN.onTap(another, () => file.click());
       PBN.onTap(next, showSettings);
       if (!crop) fitCrop();
 

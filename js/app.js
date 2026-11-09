@@ -7,7 +7,9 @@
   ['gesturestart', 'gesturechange', 'gestureend'].forEach((t) => document.addEventListener(t, prevent, { passive: false }));
   document.addEventListener('touchmove', (e) => {
     const t = e.target;
-    if (!(t && t.closest && t.closest('.scrollable'))) e.preventDefault();
+    // Leave scrollable areas and native form controls alone (cancelling a
+    // Pencil tap's tiny wobble would make Safari drop the tap on a control).
+    if (!(t && t.closest && t.closest('.scrollable, input, label, select, textarea'))) e.preventDefault();
   }, { passive: false });
   document.addEventListener('dblclick', prevent, { passive: false });
   document.addEventListener('contextmenu', prevent);
