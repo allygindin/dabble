@@ -39,6 +39,16 @@
     const [r, g, b] = rgb(hex);
     return `rgb(${m(r)},${m(g)},${m(b)})`;
   };
+  // WCAG contrast ratio between two colors (1..21).
+  PBN.contrast = function (a, b) {
+    const la = PBN.luminance(a), lb = PBN.luminance(b);
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+  };
+  PBN.INK = '#2F3441';
+  // Number color for a swatch: whichever of white / ink reads better on it.
+  PBN.textOn = function (hex) {
+    return PBN.contrast(hex, PBN.INK) >= PBN.contrast(hex, '#FFFFFF') ? PBN.INK : '#FFFFFF';
+  };
   PBN.luminance = function (hex) {
     const [r, g, b] = rgb(hex).map((c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); });
     return 0.2126 * r + 0.7152 * g + 0.0722 * b;

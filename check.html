@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dabble – artwork checker</title>
+<style>
+  :root { font-family: ui-rounded, system-ui, -apple-system, sans-serif; color: #2F3441; background: #FBF7F2; }
+  body { margin: 0; padding: 24px; max-width: 1000px; margin-inline: auto; }
+  h1 { margin: 0 0 4px; }
+  .note { color: #8A8F9C; margin: 0 0 20px; }
+  section { background: #fff; border-radius: 16px; padding: 16px 20px; margin-bottom: 16px; box-shadow: 0 1px 0 #E9E2D8; }
+  h2 { margin: 0 0 6px; font-size: 20px; display: flex; gap: 10px; align-items: center; }
+  .ok { color: #2F6B2A; } .bad { color: #B3261E; } .warn { color: #8A5A00; }
+  .badge { font-size: 13px; padding: 2px 10px; border-radius: 999px; background: #DDF3D3; color: #2F6B2A; }
+  .badge.bad { background: #FFD9D3; color: #9B2C1F; }
+  ul { margin: 6px 0 0; padding-left: 20px; } li { margin: 2px 0; }
+  .sw { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.2); }
+  iframe { position: absolute; left: -10000px; width: 1180px; height: 820px; border: 0; }
+</style>
+</head>
+<body>
+<h1>Artwork checker</h1>
+<p class="note">Open this page from the same server as the game (e.g. /check.html). It checks every artwork listed in index.html.</p>
+<div id="out">Checking…</div>
+<iframe id="game" src="index.html"></iframe>
+<script>
+// ---- rules -------------------------------------------------------------
+const RULES = {
+  minTapPx: 44,        // smallest region's largest inner circle at max zoom, on screen
+  minDeltaE: 12,       // any two palette colors must differ at least this much (CIE76)
+  similarDeltaE: 25,   // closer than this = "similar shades": numbers must not be confusable
+  minContrast: 4.5,    // swatch number vs swatch color (WCAG AA)
+  minFromWhite: 15,    // colors this close to white look unpainted
+  // Conservative artwork area on an iPad (px): landscape and portrait, after toolbar + palette.
+  stages: [[1108, 500], [748, 780]],
+};
+const CONFUSABLE = [['1', '7'], ['3', '8'], ['5', '6'], ['6', '8'], ['8', '9'], ['0', '8']];
+
+// ---- color math --------------------------------------------------------
+function lab(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  const r = lin((n >> 16) & 255), g = lin((n >> 8) & 255), b = lin(n & 255);
+  const X = (r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047, Y = r * 0.2126 + g * 0.7152 + b * 0.0722, Z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883;
+  const f = (t) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  return [116 * f(Y) - 16, 500 * (f(X) - f(Y)), 200 * (f(Y) - f(Z))];
+}
+const dE = (a, b) => { const A = lab(a), B = lab(b); return Math.hypot(A[0] - B[0], A[1] - B[1], A[2] - B[2]); };
+function confusable(a, b) {
+  const x = String(a), y = String(b);
+  if (x.length !== y.length) return false;
+  let diff = [];
+  for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) diff.push([x[i], y[i]]);
+  return diff.length === 1 && CONFUSABLE.some(([p, q]) => (diff[0][0] === p && diff[0][1] === q) || (diff[0][0] === q && diff[0][1] === p));
+}
+
+// ---- checks -------------------------------------------------------------
+function checkArt(G, art) {
+  const PBN = G.PBN, doc = G.document;
+  const problems = [], warnings = [];
+  const pal = art.palette.map((p, i) => ({ n: i + 1, hex: p[0], name: p[1] || '' }));
+  const used = new Set(art.regions.map((r) => r.c));
+  art.regions.forEach((r, i) => { if (!(r.c >= 1 && r.c <= pal.length)) problems.push(`Region ${i} uses color ${r.c}, which isn't in the palette.`); });
+  pal.forEach((p) => { if (!used.has(p.n)) warnings.push(`Color ${p.n} (${p.name}) isn't used by any region.`); });
+
+  // Tap size: measure each region's visible inner circle with the game's own code.
+  const host = doc.createElement('div');
+  host.style.cssText = 'position:fixed;left:0;top:0;width:800px;height:600px;';
+  doc.body.appendChild(host);
+  const svg = PBN.svgEl('svg', { viewBox: art.viewBox.join(' ') }, host);
+  const paths = art.regions.map((r) => PBN.svgEl('path', { d: PBN.shapeToPath(r) }, svg));
+  const labels = PBN.labels.get(art, PBN.signature(art), paths);
+  host.remove();
+  const [, , vw, vh] = art.viewBox;
+  const kMin = Math.min(...RULES.stages.map(([w, h]) => Math.min(w / vw, h / vh)));
+  const maxZoom = art.maxZoom || 8;
+  const taps = labels.map((L, i) => ({ i, c: art.regions[i].c, px: 2 * L.r * kMin * maxZoom }));
+  taps.filter((t) => t.px < RULES.minTapPx).forEach((t) => problems.push(
+    t.px === 0 ? `Region ${t.i} (color ${t.c}) is completely hidden by regions drawn after it.`
+      : `Region ${t.i} (color ${t.c}) is only ${t.px.toFixed(0)}px across at max zoom (needs ${RULES.minTapPx}).`));
+  const smallest = taps.reduce((a, b) => (b.px < a.px ? b : a));
+
+  // Palette: distinct colors, non-confusable numbers for similar shades, readable numbers.
+  let closest = { d: Infinity };
+  for (let a = 0; a < pal.length; a++) {
+    const fromWhite = dE(pal[a].hex, '#FFFFFF');
+    if (fromWhite < RULES.minFromWhite) problems.push(`Color ${pal[a].n} (${pal[a].name}) is too close to white (ΔE ${fromWhite.toFixed(1)}); it would look unpainted.`);
+    const contrast = PBN.contrast(pal[a].hex, PBN.textOn(pal[a].hex));
+    if (contrast < RULES.minContrast) problems.push(`Swatch ${pal[a].n} (${pal[a].name}): number contrast ${contrast.toFixed(2)}:1 (needs ${RULES.minContrast}).`);
+    for (let b = a + 1; b < pal.length; b++) {
+      const d = dE(pal[a].hex, pal[b].hex);
+      if (d < closest.d) closest = { d, a: pal[a], b: pal[b] };
+      if (d < RULES.minDeltaE) problems.push(`Colors ${pal[a].n} (${pal[a].name}) and ${pal[b].n} (${pal[b].name}) are too alike (ΔE ${d.toFixed(1)}).`);
+      if (d < RULES.similarDeltaE && confusable(pal[a].n, pal[b].n)) problems.push(`Similar shades ${pal[a].n} (${pal[a].name}) and ${pal[b].n} (${pal[b].name}) have easily confused numbers.`);
+    }
+  }
+  return {
+    id: art.id, title: art.title, regions: art.regions.length, colors: pal.length, maxZoom,
+    smallestTapPx: Math.round(smallest.px), smallestRegion: smallest.i,
+    closestPair: closest.a ? `${closest.a.n} ${closest.a.name} / ${closest.b.n} ${closest.b.name} (ΔE ${closest.d.toFixed(1)})` : '',
+    tags: art.tags || [], problems, warnings, ok: problems.length === 0,
+  };
+}
+
+function render(results) {
+  const out = document.getElementById('out');
+  out.innerHTML = '';
+  results.forEach((r) => {
+    const s = document.createElement('section');
+    s.innerHTML = `<h2>${r.title} <span class="badge ${r.ok ? '' : 'bad'}">${r.ok ? 'passes' : r.problems.length + ' problem' + (r.problems.length > 1 ? 's' : '')}</span></h2>
+      <div>${r.regions} regions · ${r.colors} colors · max zoom ${r.maxZoom}× · tags: ${r.tags.join(', ') || '—'}</div>
+      <div>Smallest tap target at max zoom: <b>${r.smallestTapPx}px</b> (region ${r.smallestRegion}) · Closest colors: ${r.closestPair}</div>
+      ${r.problems.length ? '<ul class="bad">' + r.problems.map((p) => `<li>${p}</li>`).join('') + '</ul>' : ''}
+      ${r.warnings.length ? '<ul class="warn">' + r.warnings.map((p) => `<li>${p}</li>`).join('') + '</ul>' : ''}`;
+    out.appendChild(s);
+  });
+}
+
+document.getElementById('game').addEventListener('load', (e) => {
+  const G = e.target.contentWindow;
+  const results = G.PBN.artworks.map((art) => {
+    try { return checkArt(G, art); } catch (err) { return { id: art.id, title: art.title, problems: ['Checker error: ' + err.message], warnings: [], ok: false }; }
+  });
+  window.checkResults = results;
+  render(results);
+});
+</script>
+</body>
+</html>

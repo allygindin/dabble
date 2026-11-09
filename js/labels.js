@@ -12,7 +12,7 @@
 
   PBN.labels = {
     get(art, sig, paths) {
-      const key = 'labels3:' + art.id + ':' + sig;
+      const key = 'labels4:' + art.id + ':' + sig;
       const cached = PBN.store.get(key);
       if (Array.isArray(cached) && cached.length === paths.length) return cached;
       const res = compute(art, paths);
@@ -38,7 +38,7 @@
     let slow = null;
     return paths.map((p, i) => {
       const r = art.regions[i];
-      if (r.label) return { x: r.label[0], y: r.label[1], size: r.label[2] || W * 0.03 };
+      if (r.label) { const sz = r.label[2] || W * 0.03; return { x: r.label[0], y: r.label[1], size: sz, r: r2(sz / 1.3) }; }
       let hit = found[i];
       if (!hit) {
         slow = slow || pointTester(paths);
@@ -46,9 +46,10 @@
       }
       if (!hit) {
         const b = p.getBBox();
-        return { x: r2(b.x + b.width / 2), y: r2(b.y + b.height / 2), size: r2(minF) };
+        return { x: r2(b.x + b.width / 2), y: r2(b.y + b.height / 2), size: r2(minF), r: 0 };
       }
-      return { x: r2(hit.x), y: r2(hit.y), size: sizeFor(i, hit.d) };
+      // r = radius of the largest circle inside the region's visible part (artwork units)
+      return { x: r2(hit.x), y: r2(hit.y), size: sizeFor(i, hit.d), r: r2(hit.d) };
     });
   }
 

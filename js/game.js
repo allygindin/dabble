@@ -22,7 +22,10 @@
       back.setAttribute('aria-label', 'Back to pictures');
       PBN.onTap(back, () => opts.onExit());
     }
-    H('div', 'title', bar).textContent = art.title;
+    const titleBox = H('div', 'title', bar);
+    H('span', 'title-text', titleBox).textContent = art.title;
+    // Name of the selected color, so similar shades can be told apart by name too.
+    const selName = H('span', 'sel-name', titleBox);
     const prog = H('div', 'progress', bar);
     const progText = H('span', '', prog);
     const progBar = H('span', 'bar', prog, '<i></i>').firstChild;
@@ -60,13 +63,14 @@
     });
 
     const pal = H('nav', 'palette', root);
+    if (palette.length > 16) pal.classList.add('compact'); // smaller swatches for big palettes
     const swatches = {};
     const remaining = {};
     palette.forEach((p) => {
       remaining[p.n] = 0;
       const b = H('button', 'swatch', pal, `<span class="dot"><span class="num">${p.n}</span>${PBN.icons.check}</span><span class="left"></span>`);
       b.style.setProperty('--c', p.hex);
-      if (PBN.luminance(p.hex) > 0.42) b.classList.add('light');
+      if (PBN.textOn(p.hex) !== '#FFFFFF') b.classList.add('light');
       b.setAttribute('aria-label', `Color ${p.n}${p.name ? ' – ' + p.name : ''}`);
       PBN.onTap(b, () => select(p.n));
       swatches[p.n] = b;
@@ -76,7 +80,7 @@
     // Spread swatches over evenly-filled rows instead of leaving a lone straggler.
     function layoutPalette() {
       const sw = swatches[1].offsetWidth || 66;
-      const gap = 12;
+      const gap = parseFloat(getComputedStyle(pal).columnGap) || 12;
       const fit = Math.max(1, Math.floor((pal.clientWidth - 32 + gap) / (sw + gap)));
       const rows = Math.ceil(palette.length / fit);
       pal.style.setProperty('--cols', Math.ceil(palette.length / rows));
@@ -123,6 +127,7 @@
       if (n != null) setHighlight(n, true);
       if (prev != null) updateSwatch(prev);
       if (n != null) updateSwatch(n);
+      selName.innerHTML = n == null ? '' : `<i style="background:${palette[n - 1].hex}"></i>${n}${palette[n - 1].name ? ' \u00b7 ' + palette[n - 1].name : ''}`;
     }
     function nextIncomplete(from) {
       for (let k = 1; k <= palette.length; k++) {
