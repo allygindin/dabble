@@ -231,6 +231,18 @@ button { font: inherit; color: inherit; border: 0; background: none; padding: 0;
 .upload-pick p { margin: 0 0 22px; color: var(--muted); font-size: 17px; line-height: 1.4; }
 .file-btn { position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
 .file-btn input[type=file] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 100px; }
+.library { flex: 1; min-height: 0; overflow-y: auto; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
+.library-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.library-head .chips { margin: 0; }
+.library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; padding-bottom: 8px; }
+.library-tile {
+  display: flex; flex-direction: column; text-align: left; background: var(--card); border-radius: 18px; overflow: hidden;
+  box-shadow: 0 1px 0 var(--line), 0 4px 14px rgba(60, 40, 20, .07); transition: transform .12s;
+}
+.library-tile:active { transform: scale(.97); }
+.library-tile img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--stage); -webkit-user-drag: none; }
+.library-tile span { padding: 10px 14px 12px; font-weight: 800; font-size: 16px; }
+@media (max-width: 600px) { .library-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
 .pick-icon svg { width: 60px; height: 60px; color: var(--accent); }
 
 .crop-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 14px; }

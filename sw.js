@@ -1,7 +1,9 @@
 // Offline support: keeps a copy of every file the game needs, so it runs from
 // the home screen with no network. Online, files are always fetched fresh, so
-// updates show up on their own. Add any new file to FILES.
-const VERSION = 'dabble-v1';
+// updates show up on their own. Add any new file to FILES (library photos
+// are added from stock.js automatically).
+importScripts('js/stock.js');
+const VERSION = 'dabble-v2';
 const FILES = [
   './',
   'index.html',
@@ -29,10 +31,12 @@ const FILES = [
   'js/gallery.js',
   'js/myart.js',
   'js/db.js',
+  'js/stock.js',
   'js/convert.js',
   'js/convert-worker.js',
   'js/upload.js',
   'js/app.js',
+  ...self.PBN_STOCK.flatMap((p) => [`stock/${p.id}.jpg`, `stock/thumbs/${p.id}.jpg`]),
 ];
 
 self.addEventListener('install', (e) => {

@@ -1,4 +1,5 @@
-// "Upload picture": photo -> crop -> settings + numbered preview -> save.
+// "Upload picture" / "Photo library": photo -> crop -> settings + numbered
+// preview -> save. The library photos are listed in stock.js.
 // The conversion itself is in convert.js (run in a Web Worker).
 (function () {
   const H = PBN.el, S = PBN.svgEl;
@@ -50,13 +51,14 @@
     const back = H('button', 'icon-btn', bar, PBN.icons.back);
     back.setAttribute('aria-label', 'Back');
     const titleBox = H('div', 'title', bar);
-    H('span', 'title-text', titleBox).textContent = 'Upload picture';
+    const library = opts.mode === 'library';
+    H('span', 'title-text', titleBox).textContent = library ? 'Photo library' : 'Upload picture';
     const stepLabel = H('span', 'sel-name', titleBox);
     const body = H('div', 'upload-body', root);
 
     let step = 'pick', src = null, crop = null, ratio = null, onResize = null, cleanup = null;
     const settings = { colors: 16, detail: 3 };
-    const fields = { name: '', tag: 'photos' };
+    const fields = { name: '', tag: 'photos', fromStock: false };
 
     PBN.onTap(back, () => { if (step === 'settings') showCrop(); else if (step === 'crop') showPick(); else opts.onBack(); });
     function clear() { if (cleanup) cleanup(); cleanup = null; onResize = null; body.innerHTML = ''; }
@@ -65,12 +67,63 @@
 
     // ---------- step 1: choose ----------
     function showPick() {
+      if (library) { showLibrary(); return; }
       step = 'pick'; clear();
       stepLabel.textContent = 'Step 1 of 3 · Choose a photo';
       const card = H('div', 'upload-pick', body);
       card.innerHTML = `<div class="pick-icon">${PBN.icons.upload}</div><h2>Turn a photo into a puzzle</h2>
         <p>Pick a photo from your library. Next you'll crop it, choose how many colors and how much detail, and preview the puzzle before saving.</p>`;
       photoButton(card, 'btn primary', 'Choose photo');
+    }
+
+    // ---------- step 1 (library): pick a built-in photo ----------
+    function showLibrary() {
+      step = 'pick'; clear();
+      stepLabel.textContent = 'Step 1 of 3 · Pick a photo';
+      const list = H('div', 'library scrollable', body);
+      const head = H('div', 'library-head', list);
+      const cats = Array.from(new Set(PBN.stock.map((p) => p.category)));
+      let cat = PBN.store.getSetting('libraryCategory', 'all');
+      if (cat !== 'all' && !cats.includes(cat)) cat = 'all';
+      const chipRow = H('div', 'chips', head);
+      chipRow.setAttribute('role', 'group');
+      chipRow.setAttribute('aria-label', 'Filter photos');
+      photoButton(head, 'btn ghost', 'Use my own photo');
+      const grid = H('div', 'library-grid', list);
+      const tiles = PBN.stock.map((p) => {
+        const b = H('button', 'library-tile', grid);
+        b.setAttribute('aria-label', p.title);
+        const img = H('img', '', b);
+        img.src = `stock/thumbs/${p.id}.jpg`; img.alt = ''; img.loading = 'lazy'; img.draggable = false;
+        H('span', '', b).textContent = p.title;
+        PBN.onTap(b, () => onStock(p));
+        return { p, b };
+      });
+      const chips = ['all', ...cats].map((t) => {
+        const chip = H('button', 'chip', chipRow);
+        chip.textContent = t === 'all' ? 'All' : t.charAt(0).toUpperCase() + t.slice(1);
+        PBN.onTap(chip, () => { cat = t; PBN.store.setSetting('libraryCategory', t); filter(); });
+        return { t, chip };
+      });
+      function filter() {
+        chips.forEach(({ t, chip }) => { chip.classList.toggle('on', t === cat); chip.setAttribute('aria-pressed', String(t === cat)); });
+        tiles.forEach(({ p, b }) => { b.hidden = cat !== 'all' && p.category !== cat; });
+      }
+      filter();
+    }
+    let loadingStock = false;
+    async function onStock(p) {
+      if (loadingStock) return;
+      loadingStock = true;
+      try {
+        const res = await fetch(`stock/${p.id}.jpg`);
+        if (!res.ok) throw new Error(res.status);
+        src = await loadImage(await res.blob());
+        crop = null; ratio = null;
+        Object.assign(fields, { name: p.title, tag: p.category, fromStock: true });
+        showCrop();
+      } catch (e) { PBN.toast('Couldn’t open that photo'); }
+      finally { loadingStock = false; }
     }
 
     // A photo button is the browser's own file input, invisible and stretched
@@ -93,7 +146,7 @@
       try {
         src = await loadImage(f);
         crop = null; ratio = null;
-        if (!fields.name) fields.name = `My picture ${PBN.userArt.count() + 1}`;
+        if (!fields.name || fields.fromStock) Object.assign(fields, { name: `My picture ${PBN.userArt.count() + 1}`, tag: 'photos', fromStock: false });
         showCrop();
       } catch (e) { PBN.toast('Couldn’t open that image'); }
     }
@@ -161,7 +214,10 @@
         });
       });
       const actions = H('div', 'crop-actions', tools);
-      photoButton(actions, 'btn ghost', 'Choose another');
+      if (library) {
+        const other = H('button', 'btn ghost', actions); other.textContent = 'Choose another';
+        PBN.onTap(other, showLibrary);
+      } else photoButton(actions, 'btn ghost', 'Choose another');
       const next = H('button', 'btn primary', actions); next.textContent = 'Next';
       PBN.onTap(next, showSettings);
       if (!crop) fitCrop();
@@ -235,7 +291,7 @@
       Object.assign(tagIn, { type: 'text', maxLength: 24, value: fields.tag, autocomplete: 'off' });
       tagIn.setAttribute('autocapitalize', 'none');
       const tagChips = H('div', 'chips small', panel);
-      const known = Array.from(new Set(['photos', ...PBN.artworks.flatMap((a) => a.tags || [])])).sort();
+      const known = Array.from(new Set(['photos', ...PBN.stock.map((p) => p.category), ...PBN.artworks.flatMap((a) => a.tags || [])])).sort();
       const syncChips = () => tagChips.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c.dataset.tag === normTag(tagIn.value)));
       known.forEach((t) => {
         const chip = H('button', 'chip', tagChips);
@@ -336,7 +392,7 @@
         try {
           await PBN.userArt.add(rec);
           if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
-          fields.name = ''; fields.tag = 'photos';
+          Object.assign(fields, { name: '', tag: 'photos', fromStock: false });
           PBN.toast('Saved!');
           opts.onSaved(rec);
         } catch (e) {

@@ -31,8 +31,8 @@
   function viewArt(art) {
     show(() => PBN.ArtViewer(app, art, { onBack: showMyArt, onRestart: openArt }));
   }
-  function showUpload() {
-    show(() => PBN.Upload(app, { onBack: showGallery, onSaved: openArt }));
+  function showUpload(mode) {
+    show(() => PBN.Upload(app, { mode, onBack: showGallery, onSaved: openArt }));
   }
   function openArt(art) {
     show(() => PBN.Game(app, art, { onExit: showGallery }));

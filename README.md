@@ -64,6 +64,23 @@ photo is never sent anywhere.
 - Uploaded pictures can be deleted with the trash button on their painting
   screen.
 
+## Photo library
+
+**Photo library** on the start screen offers built-in photos (porches, front
+doors, living rooms, bedrooms, kitchens) that go through the same crop →
+colors/detail → save steps as an upload, so you don't need your own photo.
+They are saved under their category (e.g. "Porches") on the start screen.
+
+All of them are public domain or CC0; see `stock/CREDITS.md`. To add one:
+put a JPEG (about 1280px on the long side) in `stock/` and a ~360px copy in
+`stock/thumbs/` with the same name, then add a line to `js/stock.js`:
+
+```js
+{"id": "red-door", "title": "Red Door", "category": "doors"},
+```
+
+`sw.js` picks up the new files for offline use by itself.
+
 ## Adding a picture
 
 1. Create a file in `artworks/`, e.g. `artworks/owl.js`.
@@ -172,6 +189,8 @@ js/upload.js          Upload picture screens (choose, crop, settings + preview)
 js/convert.js         photo -> paint-by-numbers conversion (no DOM)
 js/convert-worker.js  runs convert.js off the main thread
 js/db.js              IndexedDB storage for uploaded pictures + progress
+js/stock.js           list of built-in Photo library photos (stock/)
+stock/                library photos, thumbnails, CREDITS.md
 js/celebrate.js       confetti + finished-picture overlay
 js/sound.js           small synthesized sound effects
 js/ui.js              DOM helpers, icons, toast, confirm dialog

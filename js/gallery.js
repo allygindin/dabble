@@ -32,11 +32,14 @@
     const myArtBtn = H('button', 'pill-btn', controls, `${PBN.icons.frame}<span>My Art</span><span class="count">${doneCount}</span>`);
     myArtBtn.setAttribute('aria-label', `My Art, ${doneCount} finished`);
     PBN.onTap(myArtBtn, onMyArt);
+    const newPicture = (mode) => {
+      if (!PBN.userArt.available) { PBN.toast('This browser can’t store new pictures'); return; }
+      onUpload(mode);
+    };
+    const libraryBtn = H('button', 'pill-btn', controls, `${PBN.icons.library}<span>Photo library</span>`);
+    PBN.onTap(libraryBtn, () => newPicture('library'));
     const uploadBtn = H('button', 'pill-btn', controls, `${PBN.icons.upload}<span>Upload picture</span>`);
-    PBN.onTap(uploadBtn, () => {
-      if (!PBN.userArt.available) { PBN.toast('This browser can’t store uploaded pictures'); return; }
-      onUpload();
-    });
+    PBN.onTap(uploadBtn, () => newPicture('upload'));
     const toggle = H('button', 'switch', controls, '<span class="switch-label">Hide completed</span><span class="switch-track"><span class="switch-thumb"></span></span>');
     toggle.setAttribute('role', 'switch');
     // Category chips: "All" plus one per tag used by any artwork. The last
