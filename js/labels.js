@@ -65,7 +65,8 @@
   function idBuffer(art, paths) {
     if (typeof Path2D !== 'function') return null;
     const [vx, vy, vw, vh] = art.viewBox;
-    const scale = RES / Math.max(vw, vh);
+    // Uploaded pictures can have many tiny areas: use at least 2 buffer pixels per artwork unit.
+    const scale = (art.user ? Math.max(RES, 2 * Math.max(vw, vh)) : RES) / Math.max(vw, vh);
     const w = Math.ceil(vw * scale), h = Math.ceil(vh * scale);
     const canvas = document.createElement('canvas');
     canvas.width = w; canvas.height = h;

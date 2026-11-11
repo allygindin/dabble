@@ -4,16 +4,17 @@
 (function () {
   const H = PBN.el, S = PBN.svgEl;
 
-  // Detail level -> working size (long side, px), minimum area (px) and
-  // minimum inner radius (px). Lower detail merges more small regions.
+  // Detail level -> working size (long side, px), minimum area (px), minimum
+  // inner radius (px), max zoom and max number of areas. Higher detail works
+  // at a higher resolution and allows deeper zoom, so smaller areas still pass
+  // the tap-size rule (every area fits a 44px circle at max zoom).
   const DETAIL = {
-    1: { G: 180, minArea: 90, r: 3.0, name: 'Simple' },
-    2: { G: 210, minArea: 60, r: 2.5, name: 'Low' },
-    3: { G: 240, minArea: 40, r: 2.0, name: 'Medium' },
-    4: { G: 270, minArea: 26, r: 1.6, name: 'High' },
-    5: { G: 300, minArea: 16, r: 1.25, name: 'Detailed' },
+    1: { G: 220, minArea: 110, r: 2.6, zoom: 10, max: 250, name: 'Simple' },
+    2: { G: 280, minArea: 55, r: 2.0, zoom: 12, max: 450, name: 'Low' },
+    3: { G: 340, minArea: 34, r: 1.6, zoom: 14, max: 700, name: 'Medium' },
+    4: { G: 440, minArea: 20, r: 1.2, zoom: 17, max: 1100, name: 'High' },
+    5: { G: 540, minArea: 14, r: 1.0, zoom: 20, max: 1600, name: 'Detailed' },
   };
-  const MAX_ZOOM = 10, MAX_REGIONS = 500;
   // Photos often have many close shades, so uploads use a relaxed "colors must
   // differ" minimum (CIE ΔE 6 instead of the built-in pictures' 12).
   const MIN_DELTA_E = 6;
@@ -325,7 +326,7 @@
         const W = a >= 1 ? d.G : Math.round(d.G * a), Hh = a >= 1 ? Math.round(d.G / a) : d.G;
         // Tap rule: at max zoom every region must fit a 44px circle on an iPad (+ margin for smoothing).
         const kMin = Math.min(...PBN.TAP.stages.map(([w, h]) => Math.min(w / W, h / Hh)));
-        const rMin = Math.max(d.r, PBN.TAP.minTapPx / 2 / (kMin * MAX_ZOOM) + 0.35);
+        const rMin = Math.max(d.r, PBN.TAP.minTapPx / 2 / (kMin * d.zoom) + 0.35);
         const c = document.createElement('canvas');
         c.width = W; c.height = Hh;
         const ctx = c.getContext('2d');
@@ -333,13 +334,13 @@
         ctx.drawImage(src, crop.x, crop.y, crop.w, crop.h, 0, 0, W, Hh);
         const data = ctx.getImageData(0, 0, W, Hh).data;
         try {
-          const res = await convert({ width: W, height: Hh, data, colors: settings.colors, minArea: d.minArea, rMin, maxRegions: MAX_REGIONS, minDeltaE: MIN_DELTA_E });
+          const res = await convert({ width: W, height: Hh, data, colors: settings.colors, minArea: d.minArea, rMin, maxRegions: d.max, minDeltaE: MIN_DELTA_E });
           if (my !== job || step !== 'settings') return; // a newer request superseded this one
           const n = res.regions.length;
           art = {
             id: 'upload-preview', user: true, title: fields.name, tags: [normTag(fields.tag) || 'photos'],
-            difficulty: n < 70 ? 'Easy' : n < 160 ? 'Medium' : 'Hard',
-            viewBox: [0, 0, res.width, res.height], maxZoom: MAX_ZOOM, minDeltaE: MIN_DELTA_E,
+            difficulty: n < 120 ? 'Easy' : n < 400 ? 'Medium' : 'Hard',
+            viewBox: [0, 0, res.width, res.height], maxZoom: d.zoom, minDeltaE: MIN_DELTA_E,
             palette: res.palette.map((p) => [p.hex, p.name]), regions: res.regions,
           };
           renderPreview();
@@ -375,7 +376,7 @@
           const cap = 34 / (pz.unitPx() * pz.scale);
           labelEls.forEach((t, i) => t.setAttribute('font-size', Math.min(labelSizes[i], cap)));
         };
-        pz = PBN.panZoom(pv, svg, g, { viewBox: art.viewBox, maxScale: MAX_ZOOM, onChange: fit });
+        pz = PBN.panZoom(pv, svg, g, { viewBox: art.viewBox, maxScale: art.maxZoom, onChange: fit });
         fit();
       }
 

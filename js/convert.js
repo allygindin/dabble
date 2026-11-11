@@ -4,9 +4,10 @@
 // run({ width, height, data, colors, minArea, rMin, maxRegions }) returns
 // { width, height, palette: [{hex, name}], regions: [{c, d}], stats }.
 //
-// Pipeline: light blur -> k-means in Lab -> palette rules (distinct colors,
-// not near white) -> majority filter -> merge regions
-// that are too small or too thin into their best neighbor -> drop unused
+// Pipeline: edge-preserving smoothing + highlight compression -> k-means in
+// Lab (hue weighted) -> palette rules (distinct colors, not near white) ->
+// majority filter -> merge regions that are too small or too thin into their
+// most similar neighbor -> drop unused
 // colors, order palette (shade families, light to dark, no confusable numbers
 // on similar shades) -> trace each region's outline with smoothing that is
 // shared by both sides of every border, so regions tile without gaps.
@@ -196,7 +197,9 @@
   }
 
   // Merge every region that is too small or too thin into the neighbor it shares the most border with.
-  function mergeSmall(lbl, W, H, minArea, rMin, maxRegions) {
+  // Prefers the most similar color among neighbors (so a dark window frame
+  // isn't swallowed by a pale wall when a dark neighbor is available).
+  function mergeSmall(lbl, W, H, minArea, rMin, maxRegions, P) {
     for (let it = 0; it < 80; it++) {
       const { comp, count, area, rep } = components(lbl, W, H);
       const R = radii(comp, W, H, count);
@@ -216,8 +219,15 @@
         if (x < W - 1) { const b = comp[p + 1]; if (a !== b) { add(a, b); add(b, a); } }
         if (y < H - 1) { const b = comp[p + W]; if (a !== b) { add(a, b); add(b, a); } }
       }
-      const bestN = new Int32Array(count).fill(-1), bestL = new Int32Array(count);
-      border.forEach((len, k) => { const a = Math.floor(k / count), b = k - a * count; if (len > bestL[a]) { bestL[a] = len; bestN[a] = b; } });
+      const maxL = new Int32Array(count);
+      border.forEach((len, k) => { const a = Math.floor(k / count); if (len > maxL[a]) maxL[a] = len; });
+      const bestN = new Int32Array(count).fill(-1), bestS = new Float64Array(count).fill(Infinity);
+      border.forEach((len, k) => {
+        const a = Math.floor(k / count), b = k - a * count;
+        // Color difference, plus a penalty for sharing only a little border.
+        const s = dE(P[lbl[rep[a]]].lab, P[lbl[rep[b]]].lab) + 12 * (1 - len / maxL[a]);
+        if (s < bestS[a]) { bestS[a] = s; bestN[a] = b; }
+      });
       // Pixels per region (counting sort), then recolor small regions, smallest first.
       const start = new Int32Array(count + 1);
       for (let p = 0; p < W * H; p++) start[comp[p] + 1]++;
@@ -346,36 +356,76 @@
     return order;
   }
 
+  // ---------- edge-preserving smoothing ----------
+  const KNEE = 62, L_MAX = 86, CHROMA_W = 1.6;
+  function bilateral(src, W, H, rad, sigS, sigC) {
+    const out = new Float32Array(src.length);
+    const ws = [];
+    for (let j = -rad; j <= rad; j++) for (let i = -rad; i <= rad; i++) ws.push([i, j, Math.exp(-(i * i + j * j) / (2 * sigS * sigS))]);
+    const cTab = new Float32Array(2048), cK = 1 / (2 * sigC * sigC); // weight by squared color distance (ΔE², step 1)
+    for (let k = 0; k < 2048; k++) cTab[k] = Math.exp(-k * cK);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const p = (y * W + x) * 3, L0 = src[p], a0 = src[p + 1], b0 = src[p + 2];
+      let sw = 0, sL = 0, sa = 0, sb = 0;
+      for (const [i, j, w0] of ws) {
+        const xx = x + i, yy = y + j;
+        if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
+        const q = (yy * W + xx) * 3, dL = src[q] - L0, da = src[q + 1] - a0, db = src[q + 2] - b0;
+        const d2 = dL * dL + da * da + db * db;
+        const w = w0 * (d2 < 2048 ? cTab[d2 | 0] : 0);
+        sw += w; sL += src[q] * w; sa += src[q + 1] * w; sb += src[q + 2] * w;
+      }
+      out[p] = sL / sw; out[p + 1] = sa / sw; out[p + 2] = sb / sw;
+    }
+    return out;
+  }
+
   // ---------- main ----------
   function run(job) {
     const { width: W, height: H, data } = job;
     const N = W * H, rand = rng(job.seed || 1234567);
 
-    // 1. Light 3x3 blur to calm photo noise, then Lab.
-    const lab = new Float32Array(N * 3);
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-      let r = 0, g = 0, b = 0, n = 0;
-      for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
-        const xx = x + i, yy = y + j;
-        if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
-        const q = (yy * W + xx) * 4, w = i === 0 && j === 0 ? 4 : 1;
-        r += data[q] * w; g += data[q + 1] * w; b += data[q + 2] * w; n += w;
-      }
-      const L = rgbToLab(r / n, g / n, b / n), p = (y * W + x) * 3;
-      lab[p] = L[0]; lab[p + 1] = L[1]; lab[p + 2] = L[2];
+    // 1. Lab, then an edge-preserving (bilateral) filter: flattens photo
+    // noise and texture inside areas but keeps the edges between them sharp,
+    // so outlines follow the real shapes in the photo instead of a blurred
+    // version of them.
+    let lab = new Float32Array(N * 3);
+    for (let p = 0; p < N; p++) {
+      const L = rgbToLab(data[p * 4], data[p * 4 + 1], data[p * 4 + 2]);
+      lab[p * 3] = L[0]; lab[p * 3 + 1] = L[1]; lab[p * 3 + 2] = L[2];
     }
+    lab = bilateral(lab, W, H, 2, 1.6, 9);
+    lab = bilateral(lab, W, H, 2, 1.6, 7);
+    // Highlights: palette colors may not be too close to white (they'd look
+    // unpainted). Instead of pushing every light shade onto that same limit
+    // (which merges white window frames into white walls), compress the top
+    // of the lightness range so light shades stay distinct from each other.
+    for (let p = 0; p < N; p++) {
+      const L = lab[p * 3];
+      if (L <= KNEE) continue;
+      // Only near-neutral colors need it: a bright yellow is already far from white.
+      const t = Math.max(0, 1 - Math.hypot(lab[p * 3 + 1], lab[p * 3 + 2]) / 25);
+      lab[p * 3] = L - t * (L - KNEE) * (1 - (L_MAX - KNEE) / (100 - KNEE));
+    }
+
+    // Hue differences count extra when grouping colors, so a pale yellow wall
+    // keeps its own yellow instead of being averaged with nearby grays.
+    for (let p = 0; p < N; p++) { lab[p * 3 + 1] *= CHROMA_W; lab[p * 3 + 2] *= CHROMA_W; }
 
     // 2. Colors: k-means on a sample, then the palette rules.
     const step = Math.max(1, Math.floor(N / 16000)), n = Math.floor(N / step);
     const S = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) { const p = i * step * 3; S[i * 3] = lab[p]; S[i * 3 + 1] = lab[p + 1]; S[i * 3 + 2] = lab[p + 2]; }
-    const P = finalizePalette(kmeans(S, n, Math.min(job.colors, n), rand), job.minDeltaE || RULE.minDeltaE);
+    const clusters = kmeans(S, n, Math.min(job.colors, n), rand);
+    clusters.forEach((c) => { c.lab[1] /= CHROMA_W; c.lab[2] /= CHROMA_W; });
+    const P = finalizePalette(clusters, job.minDeltaE || RULE.minDeltaE);
+    const PS = P.map((c) => [c.lab[0], c.lab[1] * CHROMA_W, c.lab[2] * CHROMA_W]);
 
     // 3. Assign pixels to the nearest palette color, then a majority filter for speckles.
     let lbl = new Int16Array(N);
     for (let p = 0; p < N; p++) {
       let best = 0, bd = Infinity;
-      for (let k = 0; k < P.length; k++) { const c = P[k].lab, a = lab[p * 3] - c[0], b = lab[p * 3 + 1] - c[1], d = lab[p * 3 + 2] - c[2], s = a * a + b * b + d * d; if (s < bd) { bd = s; best = k; } }
+      for (let k = 0; k < P.length; k++) { const c = PS[k], a = lab[p * 3] - c[0], b = lab[p * 3 + 1] - c[1], d = lab[p * 3 + 2] - c[2], s = a * a + b * b + d * d; if (s < bd) { bd = s; best = k; } }
       lbl[p] = best;
     }
     const tally = new Int32Array(P.length), out = new Int16Array(N);
@@ -393,7 +443,7 @@
     lbl = out;
 
     // 4. Merge regions that are too small or too thin to tap.
-    mergeSmall(lbl, W, H, job.minArea, job.rMin, job.maxRegions || 500);
+    mergeSmall(lbl, W, H, job.minArea, job.rMin, job.maxRegions || 500, P);
 
     // 5. Final regions; keep only colors still in use, ordered for the palette.
     const { comp, count, color } = components(lbl, W, H);
